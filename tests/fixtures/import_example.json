@@ -1,0 +1,19 @@
+[
+  {
+    "title": "[fixture] Defaults ticket"
+  },
+  {
+    "title": "[fixture] Bug ticket",
+    "type": "Bug",
+    "priority": "P0",
+    "size": "S",
+    "disciplines": ["Backend"]
+  },
+  {
+    "title": "[fixture] Backlog task",
+    "type": "Task",
+    "priority": "P3",
+    "size": "XL",
+    "status": "Backlog"
+  }
+]

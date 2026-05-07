@@ -1,0 +1,59 @@
+{
+  "tickets": [
+    {
+      "id": 1,
+      "uuid": "2136d109-2e74-42d6-9519-91128337188b",
+      "title": "Fix login bug",
+      "description": "Users cannot log in with special characters",
+      "status": "Ready",
+      "priority": "P1",
+      "size": "S",
+      "type": "Bug",
+      "disciplines": [],
+      "accountable": [],
+      "dependencies": [],
+      "comments": [],
+      "created_by": "testuser",
+      "created_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "uuid": "7748a143-9eab-49e8-a068-1c034ab58816",
+      "title": "Add dark mode",
+      "description": "Implement dark mode toggle in settings",
+      "status": "In Progress",
+      "priority": "P2",
+      "size": "M",
+      "type": "Feature",
+      "disciplines": [],
+      "accountable": [],
+      "dependencies": [],
+      "comments": [
+        {
+          "author": "lyra",
+          "text": "Design spec attached"
+        }
+      ],
+      "created_by": "testuser",
+      "created_at": "2026-01-02T00:00:00Z"
+    },
+    {
+      "id": 3,
+      "uuid": "bba82f0c-0318-498c-8da4-a2953f2b92cb",
+      "title": "Update API docs",
+      "description": "Document the new endpoints",
+      "status": "Ready",
+      "priority": "P3",
+      "size": "XS",
+      "type": "Task",
+      "disciplines": [],
+      "accountable": [],
+      "dependencies": [
+        1
+      ],
+      "comments": [],
+      "created_by": "testuser",
+      "created_at": "2026-01-03T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "tickets": [
+    {
+      "id": 1,
+      "uuid": "5d08d81e-1d9f-4789-aa20-67693e1eb179",
+      "title": "Add dark mode toggle",
+      "description": "Implement a user-facing dark/light theme switch. Persist preference in localStorage.",
+      "status": "Ready",
+      "priority": "P1",
+      "size": "S",
+      "type": "Feature",
+      "disciplines": ["Frontend"],
+      "accountable": ["alex"],
+      "dependencies": [],
+      "comments": [
+        { "author": "morgan", "text": "Design mockups are in Figma — link in #design-tokens Slack thread.", "created_at": "2026-01-03T09:14:00Z" }
+      ],
+      "created_by": "morgan",
+      "created_at": "2026-01-02T08:00:00Z"
+    },
+    {
+      "id": 2,
+      "uuid": "93c5e76f-c9e0-4ed7-b9d8-cd2fa69e5235",
+      "title": "Fix login session timeout",
+      "description": "Users are being logged out after ~5 minutes regardless of activity. Likely a sliding-window bug in the session middleware.",
+      "status": "In Progress",
+      "priority": "P0",
+      "size": "M",
+      "type": "Bug",
+      "disciplines": ["Backend", "Database"],
+      "accountable": ["sam"],
+      "dependencies": [],
+      "comments": [
+        { "author": "sam", "text": "Reproduced locally. The session TTL is being reset from creation time, not last activity.", "created_at": "2026-01-04T11:30:00Z" },
+        { "author": "morgan", "text": "This is blocking the demo — please prioritise.", "created_at": "2026-01-04T13:00:00Z" }
+      ],
+      "created_by": "morgan",
+      "created_at": "2026-01-03T07:45:00Z"
+    },
+    {
+      "id": 4,
+      "uuid": "4617c455-21ab-4bfa-9b38-9b533c12f042",
+      "title": "Migrate CI pipeline to GitHub Actions",
+      "description": "Replace the legacy Jenkins setup with GitHub Actions workflows. Cover lint, test, and deploy stages.",
+      "status": "Ready",
+      "priority": "P2",
+      "size": "XL",
+      "type": "Task",
+      "disciplines": ["DevOps", "Cloud"],
+      "accountable": [],
+      "dependencies": [3],
+      "comments": [],
+      "created_by": "alex",
+      "created_at": "2026-01-04T10:00:00Z"
+    }
+  ]
+}

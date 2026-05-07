@@ -1,0 +1,20 @@
+{
+  "tickets": [
+    {
+      "id": 4,
+      "uuid": "0933dbce-7417-49c8-bcae-8dea2118c3f4",
+      "title": "Migrate to Postgres",
+      "description": "Replace SQLite with Postgres for production",
+      "status": "Backlog",
+      "priority": "P2",
+      "size": "XL",
+      "type": "Task",
+      "disciplines": [],
+      "accountable": [],
+      "dependencies": [],
+      "comments": [],
+      "created_by": "testuser",
+      "created_at": "2026-01-04T00:00:00Z"
+    }
+  ]
+}

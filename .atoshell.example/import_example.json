@@ -1,0 +1,57 @@
+[
+  {
+    "title": "Fix login crash on empty password input",
+    "type": "Bug",
+    "priority": "P0",
+    "size": "S",
+    "disciplines": [
+      "Backend",
+      "QA"
+    ],
+    "description": "Users who submit the login form with an empty password field receive a 500 error instead of a validation message. Reproduce: POST /auth/login with password omitted."
+  },
+  {
+    "title": "Add OAuth 2.0 support for Google sign-in",
+    "type": "Feature",
+    "priority": "P1",
+    "size": "M",
+    "disciplines": [
+      "Backend",
+      "Frontend"
+    ],
+    "accountable": [
+      "lyra"
+    ],
+    "description": "Implement Google OAuth 2.0 flow. Users should be able to sign in with their Google account from the login page. Requires registering the app in Google Cloud Console."
+  },
+  {
+    "title": "Refactor auth middleware to use token introspection",
+    "type": "Task",
+    "priority": "P2",
+    "size": "L",
+    "disciplines": [
+      "Backend"
+    ],
+    "accountable": [
+      "lyra",
+      "will"
+    ],
+    "description": "Replace the current JWT decode-and-verify approach with an introspection call to the auth server. This lets us support token revocation without waiting for expiry."
+  },
+  {
+    "title": "Update password reset email template",
+    "type": "Task",
+    "size": "XS",
+    "disciplines": [
+      "Frontend",
+      "QA"
+    ]
+  },
+  {
+    "title": "Audit legacy session endpoints for deprecation",
+    "type": "Task",
+    "priority": "P3",
+    "status": "Backlog",
+    "description": "Identify all endpoints that still use the old session-cookie auth model. Mark them for removal in the next major release and file follow-up tickets."
+  }
+]

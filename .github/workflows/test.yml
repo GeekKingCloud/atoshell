@@ -1,0 +1,151 @@
+name: Tests
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  static:
+    name: Static checks (10m)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check dependencies
+        run: |
+          command -v bash || { echo '[ERROR] bash required'; exit 1; }
+          command -v jq   || { echo '[ERROR] jq required'; exit 1; }
+          command -v git  || { echo '[ERROR] git required'; exit 1; }
+
+      - name: Syntax check
+        run: |
+          while IFS= read -r file; do
+            bash -n "$file"
+          done < <(git ls-files '*.sh' '*.bash' 'bin/*')
+
+  unit:
+    name: "Unit: ${{ matrix.label }} (${{ matrix.timeout_minutes }}m)"
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: state-config
+            label: State/config
+            timeout_minutes: 15
+            files: tests/unit/config.bats tests/unit/helpers.bats tests/unit/state.bats tests/unit/prints.bats tests/unit/parser.bats
+          - group: lifecycle-install
+            label: Lifecycle/install
+            timeout_minutes: 15
+            files: tests/unit/init.bats tests/unit/install.bats tests/unit/update.bats tests/unit/uninstall.bats tests/unit/atoshell.bats
+          - group: ticket-editing
+            label: Ticket editing
+            timeout_minutes: 15
+            files: tests/unit/add.bats tests/unit/edit.bats tests/unit/delete.bats tests/unit/comment.bats
+          - group: queue-workflow
+            label: Queue workflow
+            timeout_minutes: 15
+            files: tests/unit/show.bats tests/unit/list.bats tests/unit/take.bats tests/unit/move.bats tests/unit/search.bats tests/unit/algorithms.bats
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: git clone --depth 1 --branch v1.11.0 https://github.com/bats-core/bats-core tests/bats
+
+      - name: Check dependencies
+        run: |
+          command -v bash || { echo '[ERROR] bash required'; exit 1; }
+          command -v jq   || { echo '[ERROR] jq required'; exit 1; }
+          command -v git  || { echo '[ERROR] git required'; exit 1; }
+
+      - name: Run ${{ matrix.label }}
+        run: tests/bats/bin/bats --print-output-on-failure ${{ matrix.files }}
+
+  windows-smoke:
+    name: Windows smoke (15m)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: git clone --depth 1 --branch v1.11.0 https://github.com/bats-core/bats-core tests/bats
+
+      - name: Git Bash smoke
+        shell: pwsh
+        run: |
+          $bash = 'C:\Program Files\Git\bin\bash.exe'
+          $workspaceUnix = (& $bash -lc "cygpath -u '$env:GITHUB_WORKSPACE'").Trim()
+          & $bash -lc "cd '$workspaceUnix' && bash -n *.sh funcs/*.sh bin/*"
+          & $bash -lc "cd '$workspaceUnix' && ./atoshell.sh help >/tmp/atoshell-help.out"
+          & $bash -lc "cd '$workspaceUnix' && ./bin/atoshell help >/tmp/atoshell-bin-help.out"
+
+      - name: Windows wrapper smoke
+        shell: pwsh
+        run: |
+          $bash = 'C:\Program Files\Git\bin\bash.exe'
+          $workspaceUnix = (& $bash -lc "cygpath -u '$env:GITHUB_WORKSPACE'").Trim()
+          & $bash -lc "cd '$workspaceUnix' && tests/bats/bin/bats --print-output-on-failure tests/unit/install.bats tests/unit/uninstall.bats tests/unit/atoshell.bats"
+
+      - name: Installed cmd launcher smoke
+        shell: pwsh
+        run: |
+          $bash = 'C:\Program Files\Git\bin\bash.exe'
+          $workspaceUnix = (& $bash -lc "cygpath -u '$env:GITHUB_WORKSPACE'").Trim()
+          $installHome = Join-Path $env:RUNNER_TEMP 'atoshell-home'
+          $fakeBin = Join-Path $env:RUNNER_TEMP 'atoshell-fake-bin'
+          New-Item -ItemType Directory -Force -Path $installHome, $fakeBin | Out-Null
+
+          $fakeGitPath = Join-Path $fakeBin 'git'
+          Set-Content -Path $fakeGitPath -Value @(
+            '#!/usr/bin/env bash'
+            'set -euo pipefail'
+            'if [[ "${1:-}" == clone ]]; then'
+            '  dest="${@: -1}"'
+            '  mkdir -p "$dest"'
+            "  repo='$workspaceUnix'"
+            '  cp "$repo"/*.sh "$repo"/VERSION "$dest"/'
+            '  cp -R "$repo"/funcs "$repo"/bin "$repo"/.atoshell.example "$dest"/'
+            '  mkdir -p "$dest/.git"'
+            '  exit 0'
+            'fi'
+            'exit 0'
+          )
+          $homeUnix = (& $bash -lc "cygpath -u '$installHome'").Trim()
+          $fakeBinUnix = (& $bash -lc "cygpath -u '$fakeBin'").Trim()
+          $fakeGitUnix = (& $bash -lc "cygpath -u '$fakeGitPath'").Trim()
+
+          & $bash -lc "chmod +x '$fakeGitUnix' && HOME='$homeUnix' PATH='$fakeBinUnix':`$PATH bash '$workspaceUnix/install.sh'"
+          & (Join-Path $installHome '.local\bin\atoshell.cmd') help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $installHome '.local\bin\ato.cmd') help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  required:
+    name: Required tests
+    runs-on: ubuntu-latest
+    needs:
+      - static
+      - unit
+      - windows-smoke
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          if [[ '${{ needs.static.result }}' != 'success' ]]; then
+            echo 'static failed'
+            exit 1
+          fi
+
+          if [[ '${{ needs.unit.result }}' != 'success' ]]; then
+            echo 'unit failed'
+            exit 1
+          fi
+
+          if [[ '${{ needs.windows-smoke.result }}' != 'success' ]]; then
+            echo 'windows-smoke failed'
+            exit 1
+          fi

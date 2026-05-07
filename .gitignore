@@ -1,0 +1,13 @@
+# Agents
+.codex
+CLAUDE.md
+.claude/
+
+# Tools
+.lumberhack/
+.atoshell/
+.reef/
+.atoshell/*.env
+.atoshell/meta.json
+.atoshell/.lock/
+.atoshell/.transaction/

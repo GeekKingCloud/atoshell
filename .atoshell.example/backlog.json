@@ -1,0 +1,38 @@
+{
+  "tickets": [
+    {
+      "id": 3,
+      "uuid": "1a300750-a014-4f17-aa52-864198c0ecdc",
+      "title": "Evaluate caching strategies for API responses",
+      "description": "Research Redis vs in-memory vs CDN-level caching. Produce a short writeup with recommendation.",
+      "status": "Backlog",
+      "priority": "P3",
+      "size": "XS",
+      "type": "Task",
+      "disciplines": ["Core", "Research"],
+      "accountable": [],
+      "dependencies": [],
+      "comments": [
+        { "author": "alex", "text": "Ping me before starting — I have notes from a previous spike that might save time.", "created_at": "2026-01-05T14:20:00Z" }
+      ],
+      "created_by": "alex",
+      "created_at": "2026-01-04T09:00:00Z"
+    },
+    {
+      "id": 5,
+      "uuid": "99a74eb0-3cc7-4cc0-bcfd-81817c4e5cd3",
+      "title": "Terraform staging environment",
+      "description": "Provision a staging environment matching prod via Terraform. Include VPC, RDS instance, and ECS cluster.",
+      "status": "Backlog",
+      "priority": "P2",
+      "size": "L",
+      "type": "Feature",
+      "disciplines": ["DevOps", "Cloud"],
+      "accountable": ["morgan"],
+      "dependencies": [4],
+      "comments": [],
+      "created_by": "morgan",
+      "created_at": "2026-01-05T08:30:00Z"
+    }
+  ]
+}

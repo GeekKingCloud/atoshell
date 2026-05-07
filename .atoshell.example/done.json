@@ -1,0 +1,61 @@
+{
+  "tickets": [
+    {
+      "id": 6,
+      "uuid": "55984a6c-de3b-47e5-bc94-1995d983ad3d",
+      "title": "Add JWT refresh token rotation",
+      "description": "Implement refresh-token rotation so access tokens expire after 15 minutes but sessions stay alive silently.",
+      "status": "Done",
+      "priority": "P1",
+      "size": "M",
+      "type": "Feature",
+      "disciplines": [
+        "Backend"
+      ],
+      "accountable": [
+        "sam"
+      ],
+      "dependencies": [],
+      "comments": [
+        {
+          "author": "sam",
+          "text": "PR up — rotation logic is in auth/tokens.go. Need a second pair of eyes on the revocation path.",
+          "created_at": "2026-01-06T16:00:00Z"
+        },
+        {
+          "author": "alex",
+          "text": "Left review comments. Mostly minor — one concern about the revocation race condition.",
+          "created_at": "2026-01-07T10:45:00Z"
+        }
+      ],
+      "created_by": "morgan",
+      "created_at": "2026-01-02T12:00:00Z"
+    },
+    {
+      "id": 7,
+      "uuid": "84e7b5c4-4331-41bf-baba-124c2d4522ae",
+      "title": "Fix mobile nav overflow on small screens",
+      "description": "The top nav wraps onto two lines below 375 px viewport width, overlapping the page hero.",
+      "status": "Done",
+      "priority": "P0",
+      "size": "XS",
+      "type": "Bug",
+      "disciplines": [
+        "Frontend"
+      ],
+      "accountable": [
+        "alex"
+      ],
+      "dependencies": [],
+      "comments": [
+        {
+          "author": "alex",
+          "text": "Fixed by switching to a hamburger menu below 400 px. Tested on iPhone SE and Galaxy S8.",
+          "created_at": "2026-01-03T15:10:00Z"
+        }
+      ],
+      "created_by": "morgan",
+      "created_at": "2026-01-01T11:00:00Z"
+    }
+  ]
+}
