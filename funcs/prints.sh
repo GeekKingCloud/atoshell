@@ -71,16 +71,18 @@ _print_ticket() {
 
 # ── Board rendering ───────────────────────────────────────────────────────────
 # Render the kanban board.
-# Usage: _print_board [done] [all]
-#   done — add a 4th "Done" column (suppresses the Done footer)
-#   all  — show all tickets per column (bypasses default limit of 5)
+# Usage: _print_board [done] [all] [full_titles]
+#   done        — add a 4th "Done" column (suppresses the Done footer)
+#   all         — show all tickets per column (bypasses default limit of 5)
+#   full_titles — wrap full ticket titles across multiple board lines
 # Reads config vars and file paths from caller scope via _load_config.
 _print_board() {
-  local done="${1:-}" full="${2:-}"
+  local done="${1:-}" all="${2:-}" full_titles="${3:-false}"
   local col_w=22 col_limit=5
 
   _col_header() { printf '|  %-*s' "$col_w" "${1:0:$col_w}"; }
   _col_cell()   { printf '|  %-*s' "$col_w" "${1:0:$col_w}"; }
+  _col_cell_full() { printf '|  %-*s' "$col_w" "$1"; }
   _divider() {
     local _num="${1:-4}"
     printf '+'
@@ -97,6 +99,54 @@ _print_board() {
     local _s="$1"
     _s="${_s//$'\t'/ }"
     printf '%s' "$_s"
+  }
+  _wrap_board_cell() {
+    local _s="$1"
+    local _prefix="    "
+    local _width="$col_w"
+    local _first=true
+    local _take _prefix_len _break _chunk _k
+
+    if [[ "${#_s}" -le "$_width" ]]; then
+      printf '%s\n' "$_s"
+      return
+    fi
+
+    while [[ -n "$_s" ]]; do
+      if $_first; then
+        _take=$(( _width - 1 ))
+        _first=false
+        if [[ "${#_s}" -le "$_width" ]]; then
+          printf '%s\n' "$_s"
+          break
+        fi
+        _break="$_take"
+        for (( _k=_take - 1; _k>0; _k-- )); do
+          [[ "${_s:$_k:1}" == " " ]] && { _break="$_k"; break; }
+        done
+        _chunk="${_s:0:$_break}"
+        _chunk="${_chunk%"${_chunk##*[![:space:]]}"}"
+        printf '%s-\n' "$_chunk"
+        _s="${_s:$(( _break + (_break < _take ? 1 : 0) ))}"
+        _s="${_s#"${_s%%[![:space:]]*}"}"
+      else
+        _prefix_len="${#_prefix}"
+        _take=$(( _width - _prefix_len - 1 ))
+        if [[ "${#_s}" -le $(( _width - _prefix_len )) ]]; then
+          printf '%s%s\n' "$_prefix" "$_s"
+          break
+        fi
+        _break="$_take"
+        for (( _k=_take - 1; _k>0; _k-- )); do
+          [[ "${_s:$_k:1}" == " " ]] && { _break="$_k"; break; }
+        done
+        _chunk="${_s:0:$_break}"
+        _chunk="${_chunk%"${_chunk##*[![:space:]]}"}"
+        printf '%s%s-\n' "$_prefix" "$_chunk"
+        _s="${_s:$(( _break + (_break < _take ? 1 : 0) ))}"
+        _s="${_s#"${_s%%[![:space:]]*}"}"
+      fi
+    done
   }
 
   # Collect all board data in one jq pass; rendering stays in Bash below.
@@ -130,11 +180,11 @@ _print_board() {
     end)
   ' "$BACKLOG_FILE" "$QUEUE_FILE" "$DONE_FILE" 2>/dev/null | _terminal_safe_text || true)
 
-  # Apply per-column limit unless --full
+  # Apply per-column limit unless --all
   _apply_limit() {
     local -n _ref="$1"
     local _total="${#_ref[@]}"
-    if [[ "$full" != true && "$_total" -gt "$col_limit" ]]; then
+    if [[ "$all" != true && "$_total" -gt "$col_limit" ]]; then
       local _excess=$(( _total - col_limit ))
       _ref=("${_ref[@]:0:$col_limit}" "-- $_excess more --")
     fi
@@ -163,6 +213,34 @@ _print_board() {
     _col_cell "(empty)"; _col_cell "(empty)"; _col_cell "(empty)"
     [[ "$done" == true ]] && _col_cell "(empty)"
     printf '|\n'
+  elif [[ "$full_titles" == true ]]; then
+    for (( i=0; i<max_rows; i++ )); do
+      local -a _bl_lines=() _rd_lines=() _ip_lines=() _dn_lines=()
+      local _cell_rows=0 _j
+      mapfile -t _bl_lines < <(_wrap_board_cell "${bl[$i]:-}")
+      mapfile -t _rd_lines < <(_wrap_board_cell "${rd[$i]:-}")
+      mapfile -t _ip_lines < <(_wrap_board_cell "${ip[$i]:-}")
+      [[ "$done" == true ]] && mapfile -t _dn_lines < <(_wrap_board_cell "${dn[$i]:-}")
+
+      for n in "${#_bl_lines[@]}" "${#_rd_lines[@]}" "${#_ip_lines[@]}"; do
+        (( n > _cell_rows )) && _cell_rows=$n
+      done
+      [[ "$done" == true ]] && (( ${#_dn_lines[@]} > _cell_rows )) && _cell_rows=${#_dn_lines[@]}
+
+      for (( _j=0; _j<_cell_rows; _j++ )); do
+        _col_cell_full "${_bl_lines[$_j]:-}"
+        _col_cell_full "${_rd_lines[$_j]:-}"
+        _col_cell_full "${_ip_lines[$_j]:-}"
+        [[ "$done" == true ]] && _col_cell_full "${_dn_lines[$_j]:-}"
+        printf '|\n'
+      done
+
+      if (( i < max_rows - 1 )); then
+        _col_cell_full ""; _col_cell_full ""; _col_cell_full ""
+        [[ "$done" == true ]] && _col_cell_full ""
+        printf '|\n'
+      fi
+    done
   else
     for (( i=0; i<max_rows; i++ )); do
       _col_cell "${bl[$i]:-}"; _col_cell "${rd[$i]:-}"
@@ -268,7 +346,7 @@ _json_filtered() {
         fsz="${size,,}" fs="${status,,}" \
         fd="${disciplines,,}" fa="${acct,,}"
 
-  if [[ "$scope" == "queue" ]]; then
+  if [[ "$scope" == "active" ]]; then
     if [[ "${#ranked_ready_json}" -lt 20000 ]]; then
       jq -n -c \
         --argjson ready "$ranked_ready_json" \
@@ -356,7 +434,7 @@ _print_filtered() {
   local safe_label
   safe_label="$(_terminal_safe_line "$label")"
 
-  if [[ "$scope" == "queue" ]]; then
+  if [[ "$scope" == "active" ]]; then
     local ready_tmp jq_status
     ready_tmp="$(_mktemp_sibling "$file")"
     printf '%s\n' "$ranked_ready_json" > "$ready_tmp"
@@ -447,7 +525,7 @@ _print_filtered() {
     return "$jq_status"
   fi
 
-  # Non-queue scopes: render count and rows from one filtered array.
+  # Non-active scopes: render count and rows from one filtered array.
   jq -r \
     --arg ft "$ft" --arg fp "$fp" --arg fsz "$fsz" --arg fs "$fs" --arg fd "$fd" --arg fa "$fa" \
     --arg sb "$STATUS_BACKLOG" --arg sy "$STATUS_READY" --arg sp "$STATUS_IN_PROGRESS" \

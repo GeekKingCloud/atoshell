@@ -267,6 +267,8 @@ _resolve_discs() {
   local -a disc_inputs=() resolved_discs=()
   local disc_input resolved_disc
 
+  _cli_require_csv_values "$json" "--disciplines" "$1"
+  _cli_reject_empty_csv_fields "$json" "--disciplines" "$1"
   IFS=',' read -ra disc_inputs <<< "$1"
   for disc_input in "${disc_inputs[@]}"; do
     resolved_disc="$(_resolve_discipline "${disc_input// /}" "$json")" || exit 1

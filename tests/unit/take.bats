@@ -402,6 +402,10 @@ load '../helpers/setup'
   taken_id=$(jq -r '.tickets[] | select(.status == "In Progress") | .id' .atoshell/queue.json)
   [ "$taken_id" -eq 2 ]
 }
+@test "take next --disciplines: trailing empty value is rejected before ranking" {
+  run_split atoshell take next --disciplines Backend, --json
+  assert_json_error_split "INVALID_ARGUMENT"
+}
 @test "take next: exits non-zero when filter matches no ready tickets" {
   printf '{"tickets":[
     {"id":1,"title":"Feature ticket","status":"Ready","priority":"P1","size":"S","type":"Feature","disciplines":[],"dependencies":[],"comments":[]}

@@ -76,7 +76,7 @@ if [[ "$ids_raw" == *,* && ( "$ids_raw" == ,* || "$ids_raw" == *, || "$ids_raw" 
 fi
 
 IFS=',' read -ra ids <<< "$ids_raw"
-move_messages=()
+declare -a move_messages=()
 seen_ids=","
 
 for ticket_id in "${ids[@]}"; do
@@ -146,7 +146,7 @@ for ticket_id in "${ids[@]}"; do
   fi
 done
 _state_transaction_commit
-for msg in "${move_messages[@]}"; do
+for msg in "${move_messages[@]+"${move_messages[@]}"}"; do
   _outf '%s\n' "$msg"
 done
 _outf '\n'

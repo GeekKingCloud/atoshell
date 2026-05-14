@@ -378,23 +378,57 @@ EOF
   [[ "$output" != *"-- 1 more --"* ]]
   [[ "$output" != *"Pass --done"* ]]
 }
-@test "show board --full: includes Done column" {
+@test "show board --done: shows all active-column tickets" {
+  cat > .atoshell/queue.json <<'EOF'
+{"tickets":[
+  {"id":1,"title":"Ready 1","status":"Ready","priority":"P2","size":"M"},
+  {"id":2,"title":"Ready 2","status":"Ready","priority":"P2","size":"M"},
+  {"id":3,"title":"Ready 3","status":"Ready","priority":"P2","size":"M"},
+  {"id":4,"title":"Ready 4","status":"Ready","priority":"P2","size":"M"},
+  {"id":5,"title":"Ready 5","status":"Ready","priority":"P2","size":"M"},
+  {"id":6,"title":"Ready 6","status":"Ready","priority":"P2","size":"M"}
+]}
+EOF
+  run atoshell show board --done
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Ready 6"* ]]
+  [[ "$output" != *"-- 1 more --"* ]]
+}
+@test "show board --full: wraps full titles without adding Done column" {
+  jq '.tickets[0].title = "A very long ready title that needs wrapping across board lines"' \
+    .atoshell/queue.json > .atoshell/queue.tmp
+  mv .atoshell/queue.tmp .atoshell/queue.json
+
   run atoshell show board --full
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Done"* ]]
-  [[ "$output" != *"Pass --done"* ]]
+  [[ "$output" == *"#1 A very long ready"* ]]
+  [[ "$output" == *"title that needs"* ]]
+  [[ "$output" == *"ready-"* ]]
+  [[ "$output" == *"needs-"* ]]
+  [[ "$output" == *"Pass --done"* ]]
 }
-@test "show board --all: aliases --full" {
+@test "show board --all: includes Done column and all tickets" {
+  cat > .atoshell/queue.json <<'EOF'
+{"tickets":[
+  {"id":1,"title":"Ready 1","status":"Ready","priority":"P2","size":"M"},
+  {"id":2,"title":"Ready 2","status":"Ready","priority":"P2","size":"M"},
+  {"id":3,"title":"Ready 3","status":"Ready","priority":"P2","size":"M"},
+  {"id":4,"title":"Ready 4","status":"Ready","priority":"P2","size":"M"},
+  {"id":5,"title":"Ready 5","status":"Ready","priority":"P2","size":"M"},
+  {"id":6,"title":"Ready 6","status":"Ready","priority":"P2","size":"M"}
+]}
+EOF
   run atoshell show board --all
   [ "$status" -eq 0 ]
   [[ "$output" == *"Done"* ]]
+  [[ "$output" == *"Ready 6"* ]]
   [[ "$output" != *"Pass --done"* ]]
+  [[ "$output" != *"-- 1 more --"* ]]
 }
-@test "show board -f: aliases --full" {
+@test "show board -f: uses full-title mode" {
   run atoshell show board -f
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Done"* ]]
-  [[ "$output" != *"Pass --done"* ]]
+  [[ "$output" == *"Pass --done"* ]]
 }
 
 # ── 8. Error cases ────────────────────────────────────────────────────────────

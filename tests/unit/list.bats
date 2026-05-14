@@ -46,11 +46,13 @@ load '../helpers/setup'
   run atoshell list queue
   [ "$status" -eq 0 ]
   [[ "$output" == *"Fix login bug"* ]]
+  [[ "$output" == *"Add dark mode"* ]]
+  [[ "$output" == *"Update API docs"* ]]
 }
-@test "list q: short queue alias works" {
-  run atoshell list q
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"Fix login bug"* ]]
+@test "list: trailing empty discipline filter is rejected" {
+  run atoshell list --disciplines Backend,
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
 }
 @test "list: --accountable matches named agents" {
   jq '(.tickets[] | select(.id==1)).accountable = ["agent-10"]' \
@@ -59,10 +61,33 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   [[ "$output" == *"Fix login bug"* ]]
 }
+@test "list: --accountable agent matches generic agent only" {
+  jq '(.tickets[] | select(.id==1)).accountable = ["[agent]"] |
+      (.tickets[] | select(.id==2)).accountable = ["agent-1"]' \
+    .atoshell/queue.json > "$BATS_TEST_TMPDIR/q.json" && mv "$BATS_TEST_TMPDIR/q.json" .atoshell/queue.json
+  run atoshell list --accountable agent
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Fix login bug"* ]]
+  [[ "$output" != *"Add dark mode"* ]]
+}
+@test "list: --accountable agent-1 is not treated as generic agent" {
+  jq '(.tickets[] | select(.id==1)).accountable = ["[agent]"] |
+      (.tickets[] | select(.id==2)).accountable = ["agent-1"]' \
+    .atoshell/queue.json > "$BATS_TEST_TMPDIR/q.json" && mv "$BATS_TEST_TMPDIR/q.json" .atoshell/queue.json
+  run atoshell list --accountable agent-1
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Fix login bug"* ]]
+  [[ "$output" == *"Add dark mode"* ]]
+}
 
 # ── 2. Scope keywords ─────────────────────────────────────────────────────────
 @test "list backlog: shows backlog tickets" {
   run atoshell list backlog
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Migrate to Postgres"* ]]
+}
+@test "list 1: numeric backlog scope works" {
+  run atoshell list 1
   [ "$status" -eq 0 ]
   [[ "$output" == *"Migrate to Postgres"* ]]
 }
@@ -86,6 +111,11 @@ load '../helpers/setup'
   [[ "$output" == *"Done ticket"* ]]
   [[ "$output" == *"Another done ticket"* ]]
 }
+@test "list 4: numeric done scope works" {
+  run atoshell list 4
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Initial project setup"* ]]
+}
 @test "list backlog: does not show queue tickets" {
   run atoshell list backlog
   [ "$status" -eq 0 ]
@@ -93,6 +123,12 @@ load '../helpers/setup'
 }
 @test "list ready: shows only Ready tickets" {
   run atoshell list ready
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Fix login bug"* ]]
+  [[ "$output" != *"Add dark mode"* ]]
+}
+@test "list 2: numeric ready scope works" {
+  run atoshell list 2
   [ "$status" -eq 0 ]
   [[ "$output" == *"Fix login bug"* ]]
   [[ "$output" != *"Add dark mode"* ]]
@@ -108,10 +144,24 @@ load '../helpers/setup'
   [[ "$output" == *"Add dark mode"* ]]
   [[ "$output" != *"Fix login bug"* ]]
 }
+@test "list 3: numeric in-progress scope works" {
+  run atoshell list 3
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Add dark mode"* ]]
+  [[ "$output" != *"Fix login bug"* ]]
+}
 @test "list ip: short in-progress alias works" {
   run atoshell list ip
   [ "$status" -eq 0 ]
   [[ "$output" == *"Add dark mode"* ]]
+}
+@test "list q: removed alias exits non-zero" {
+  run atoshell list q
+  [ "$status" -ne 0 ]
+}
+@test "list d: removed alias exits non-zero" {
+  run atoshell list d
+  [ "$status" -ne 0 ]
 }
 @test "list in-review: removed scope exits non-zero" {
   run atoshell list in-review
@@ -279,6 +329,30 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   count=$(echo "$output" | jq '[.[] | select(.id == 1)] | length')
   [ "$count" -eq 1 ]
+}
+@test "list --json: active queue includes Ready and In Progress tickets" {
+  run atoshell list --json
+  [ "$status" -eq 0 ]
+  ready_count=$(echo "$output" | jq '[.[] | select(.id == 1 and .status == "Ready")] | length')
+  progress_count=$(echo "$output" | jq '[.[] | select(.id == 2 and .status == "In Progress")] | length')
+  [ "$ready_count" -eq 1 ]
+  [ "$progress_count" -eq 1 ]
+}
+@test "list 2 --json: returns Ready column only" {
+  run atoshell list 2 --json
+  [ "$status" -eq 0 ]
+  ready_count=$(echo "$output" | jq '[.[] | select(.status == "Ready")] | length')
+  progress_count=$(echo "$output" | jq '[.[] | select(.status == "In Progress")] | length')
+  [ "$ready_count" -eq 2 ]
+  [ "$progress_count" -eq 0 ]
+}
+@test "list 3 --json: returns In Progress column only" {
+  run atoshell list 3 --json
+  [ "$status" -eq 0 ]
+  ready_count=$(echo "$output" | jq '[.[] | select(.status == "Ready")] | length')
+  progress_count=$(echo "$output" | jq '[.[] | select(.status == "In Progress")] | length')
+  [ "$ready_count" -eq 0 ]
+  [ "$progress_count" -eq 1 ]
 }
 @test "list --json: with --priority filter applied" {
   run atoshell list --json --priority P1

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check dependencies
         run: |
@@ -50,7 +50,7 @@ jobs:
             timeout_minutes: 15
             files: tests/unit/show.bats tests/unit/list.bats tests/unit/take.bats tests/unit/move.bats tests/unit/search.bats tests/unit/algorithms.bats
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install bats-core
         run: git clone --depth 1 --branch v1.11.0 https://github.com/bats-core/bats-core tests/bats
@@ -64,22 +64,111 @@ jobs:
       - name: Run ${{ matrix.label }}
         run: tests/bats/bin/bats --print-output-on-failure ${{ matrix.files }}
 
+  linux-smoke:
+    name: Linux smoke (15m)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Bash smoke
+        run: |
+          bash --version
+          bash -c '(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))'
+          while IFS= read -r file; do
+            bash -n "$file"
+          done < <(git ls-files '*.sh' '*.bash' 'bin/*')
+          bash ./atoshell.sh help >/tmp/atoshell-help.out
+          bash ./bin/atoshell help >/tmp/atoshell-bin-help.out
+
+      - name: Installed launcher smoke
+        run: |
+          install_home="$RUNNER_TEMP/atoshell-home"
+          fake_bin="$RUNNER_TEMP/atoshell-fake-bin"
+          mkdir -p "$install_home" "$fake_bin"
+          cat > "$fake_bin/git" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [[ "${1:-}" == clone ]]; then
+            dest="${@: -1}"
+            mkdir -p "$dest"
+            repo="$GITHUB_WORKSPACE"
+            cp "$repo"/*.sh "$repo"/VERSION "$dest"/
+            cp -R "$repo"/funcs "$repo"/bin "$repo"/.atoshell.example "$dest"/
+            mkdir -p "$dest/.git"
+            exit 0
+          fi
+          exit 0
+          SCRIPT
+          chmod +x "$fake_bin/git"
+
+          HOME="$install_home" PATH="$fake_bin:$PATH" bash ./install.sh
+          "$install_home/.local/bin/atoshell" help >/tmp/atoshell-installed-help.out
+          "$install_home/.local/bin/ato" help >/tmp/atoshell-installed-ato-help.out
+
+  macos-smoke:
+    name: macOS smoke (15m)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install modern Bash
+        run: |
+          brew list --formula bash >/dev/null 2>&1 || brew install bash
+          brew list --formula jq >/dev/null 2>&1 || brew install jq
+
+      - name: Modern Bash smoke
+        run: |
+          bash_bin="$(brew --prefix)/bin/bash"
+          "$bash_bin" --version
+          "$bash_bin" -c '(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))'
+          while IFS= read -r file; do
+            "$bash_bin" -n "$file"
+          done < <(git ls-files '*.sh' '*.bash' 'bin/*')
+          "$bash_bin" ./atoshell.sh help >/tmp/atoshell-help.out
+          "$bash_bin" ./bin/atoshell help >/tmp/atoshell-bin-help.out
+
+      - name: System Bash guidance smoke
+        run: |
+          if /bin/bash ./atoshell.sh help >/tmp/atoshell-system-bash.out 2>/tmp/atoshell-system-bash.err; then
+            echo '[ERROR] macOS system Bash unexpectedly passed'
+            exit 1
+          fi
+          grep -q 'requires Bash 4.3 or newer' /tmp/atoshell-system-bash.err
+          if /bin/bash ./install.sh --help >/tmp/atoshell-install-system-bash.out 2>/tmp/atoshell-install-system-bash.err; then
+            echo '[ERROR] macOS system Bash unexpectedly passed install help'
+            exit 1
+          fi
+          grep -q 'requires Bash 4.3 or newer' /tmp/atoshell-install-system-bash.err
+
   windows-smoke:
     name: Windows smoke (15m)
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install bats-core
         run: git clone --depth 1 --branch v1.11.0 https://github.com/bats-core/bats-core tests/bats
+
+      - name: Install smoke dependencies
+        shell: pwsh
+        run: choco install jq -y --no-progress
 
       - name: Git Bash smoke
         shell: pwsh
         run: |
           $bash = 'C:\Program Files\Git\bin\bash.exe'
           $workspaceUnix = (& $bash -lc "cygpath -u '$env:GITHUB_WORKSPACE'").Trim()
-          & $bash -lc "cd '$workspaceUnix' && bash -n *.sh funcs/*.sh bin/*"
+          & $bash -lc "cd '$workspaceUnix' && bash --version"
+          & $bash -lc "cd '$workspaceUnix' && bash -c '(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))'"
+          & $bash -lc "cd '$workspaceUnix' && git ls-files '*.sh' '*.bash' 'bin/*' | xargs -r bash -n"
           & $bash -lc "cd '$workspaceUnix' && ./atoshell.sh help >/tmp/atoshell-help.out"
           & $bash -lc "cd '$workspaceUnix' && ./bin/atoshell help >/tmp/atoshell-bin-help.out"
 
@@ -130,6 +219,8 @@ jobs:
     needs:
       - static
       - unit
+      - linux-smoke
+      - macos-smoke
       - windows-smoke
     if: always()
     steps:
@@ -142,6 +233,16 @@ jobs:
 
           if [[ '${{ needs.unit.result }}' != 'success' ]]; then
             echo 'unit failed'
+            exit 1
+          fi
+
+          if [[ '${{ needs.linux-smoke.result }}' != 'success' ]]; then
+            echo 'linux-smoke failed'
+            exit 1
+          fi
+
+          if [[ '${{ needs.macos-smoke.result }}' != 'success' ]]; then
+            echo 'macos-smoke failed'
             exit 1
           fi
 

@@ -6,9 +6,10 @@
 #
 # Aliases: rekki, draw
 #
-# Scopes (default: queue):
-#   File-based:   queue (q) | backlog (bl) | done (d)
-#   Status-based: ready (rd) | in-progress (ip) | done (d) | blockers (deps)
+# Scopes (default: active queue):
+#   Active:  queue
+#   Columns: backlog (bl, 1) | ready (rd, 2) | in-progress (ip, 3) | done (4)
+#   Other:   blockers (deps)
 #
 # Options (Filters):
 #   --type|--kind|-t <Bug|Feature|Task|0-2>  Comma-separated type
@@ -16,7 +17,7 @@
 #   --size|-s <XS|S|M|L|XL|0-4>              Comma-separated size
 #   --status|-S <status>                     Status
 #   --disciplines|--discipline|--dis|-d <n>  Comma-separated fixed discipline tags
-#   --accountable|--assign|-a <user>         Filter by accountable ("me" = current user)
+#   --accountable|--assign|-a <user>         Filter by accountable ("me" = current user, "agent" = [agent])
 #   --mine|--me|-M                           Filter for current user's tickets
 #   --agent|-A                               Filter for tickets assigned to "agent"
 # Options (Output):
@@ -36,25 +37,25 @@ _setup_readonly
 
 # ── Parse args ────────────────────────────────────────────────────────────────
 type="" priority="" size="" status="" disciplines="" acct=""
-scope="queue" json=false
+scope="active" json=false
 _cli_json_requested "$@" && json=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h) _show_help "${BASH_SOURCE[0]}"; exit 0 ;;
-    queue|q)
-      scope="queue"
+    queue)
+      scope="active"
       shift ;;
-    backlog|bl)
+    backlog|bl|1)
       scope="backlog"
       shift ;;
-    ready|rd)
+    ready|rd|2)
       scope="ready"
       shift ;;
-    in-progress|ip)
+    in-progress|ip|3)
       scope="in-progress"
       shift ;;
-    done|d)
+    done|4)
       scope="done"
       shift ;;
     blockers|deps)
@@ -86,7 +87,10 @@ while [[ $# -gt 0 ]]; do
       shift 2 ;;
     --accountable|--assign|-a)
       [[ $# -lt 2 ]] && _cli_missing_value "$json" "--accountable"
-      _u="$2"; [[ "$_u" == "me" ]] && _u="$USERNAME"
+      [[ -z "$2" ]] && _cli_missing_value "$json" "--accountable"
+      _u="$2"
+      [[ "$_u" == "me" ]]    && _u="$USERNAME"
+      [[ "$_u" == "agent" ]] && _u="[agent]"
       acct="$_u"
       shift 2 ;;
     --mine|--me|-M)
@@ -110,7 +114,7 @@ done
 # ── Validate scope ────────────────────────────────────────────────────────────
 if [[ -n "$scope" ]]; then
   case "$scope" in
-    queue|q|backlog|bl|done|d|ready|rd|in-progress|ip|blockers|deps) ;;
+    active|backlog|done|ready|in-progress|blockers) ;;
     *)
       _cli_error "$json" "UNEXPECTED_ARGUMENT" "unknown list scope \"$scope\"." "got" "$scope" ;;
   esac
@@ -138,7 +142,7 @@ fi
 ranked_ready_json='[]'
 topo_count=0
 
-[[ "$scope" == "queue" || "$scope" == "ready" ]] && _rank_ready_tickets
+[[ "$scope" == "active" || "$scope" == "ready" ]] && _rank_ready_tickets
 
 # ── Scope → file, label, status ───────────────────────────────────────────────
 case "$scope" in
@@ -151,11 +155,11 @@ case "$scope" in
   ready)
     target_file="$QUEUE_FILE" label="$STATUS_READY"
     [[ -z "$status" ]] && status="$STATUS_READY"
-    scope="queue" ;;
+    scope="active" ;;
   in-progress)
     target_file="$QUEUE_FILE" label="$STATUS_IN_PROGRESS"
     [[ -z "$status" ]] && status="$STATUS_IN_PROGRESS"
-    scope="queue" ;;
+    scope="active" ;;
   *)
     target_file="$QUEUE_FILE" label="Active" ;;
 esac

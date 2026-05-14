@@ -6,10 +6,18 @@ A lightweight, curl-installable, agentic-first terminal ticket tracker. Manage t
 
 ## Install
 ```bash
+# Linux / Git Bash
 curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
 ```
 
-Requires: `bash`, `jq`, `git`
+Requires: `bash` 4.3 or newer, `jq`, `git`.
+
+On macOS, the system `/bin/bash` is usually too old. Install modern Bash first:
+
+```bash
+brew install bash jq git
+curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"
+```
 
 Check the installed CLI version with `atoshell version` or `atoshell -v`.
 
@@ -143,9 +151,9 @@ atoshell show 5 --json      # output as JSON (agent-friendly)
 atoshell show next          # best unblocked ready ticket with no assignee or assigned to you
 atoshell show next --json
 atoshell show board         # ASCII kanban (3 active columns)
-atoshell show board --full  # add a 4th Done column (--all is an alias)
-atoshell show board --all   # same as --full
-atoshell show board --done  # same as --full for board
+atoshell show board --full  # wrap full ticket titles across multiple board lines
+atoshell show board --all   # add Done column and show all tickets per column
+atoshell show board --done  # same as --all for board
 ```
 
 **Ticket view** (`show <id>` / `show next`):
@@ -156,6 +164,12 @@ atoshell show board --done  # same as --full for board
 | `--json`     | `-j`     | Output ticket as JSON                                   |
 
 **Board view** (`show board`):
+
+| Flag      | Aliases  | Description                                                               |
+|-----------|----------|---------------------------------------------------------------------------|
+| `--full`  | `-f`     | Wrap board cells; continued lines are indented and end with `-`           |
+| `--all`   |          | Add Done column and show all tickets per column                           |
+| `--done`  |          | Same as `--all`                                                           |
 
 **Dependency Context** (`show <id>`):
 
@@ -174,12 +188,6 @@ Dependencies: #3
 Blocked by:   #3 Add auth service [In Progress]
 Blocking:     #7
 ```
-
-
-| Flag      | Aliases        | Description                              |
-|-----------|----------------|------------------------------------------|
-| `--full`  | `--all`, `-f`  | Add Done column and show all per column  |
-| `--done`  |                | Include Done column                      |
 
 ---
 
@@ -208,7 +216,7 @@ Flags can be combined freely in a single command.
 | `--type` / `--kind`, `-t`                   | `<name>` or `0`–`2`          | Set ticket type (`0`=Bug, `1`=Feature, `2`=Task)      |
 | `--priority` / `-p`                         | `<value>` or `0`–`3`         | Set priority (`P0`–`P3`)                              |
 | `--size` / `-s`                             | `<value>` or `0`–`4`         | Set size (`XS`/`S`/`M`/`L`/`XL`)                      |
-| `--status` / `--move`, `-S`                 | `<status>`                   | New status (multi-word, no quotes needed)             |
+| `--status` / `-S`                           | `<status>`                   | New status (multi-word, no quotes needed)             |
 | `--disciplines` / `--dis`, `-d`             | `add\|remove\|clear <vals>`  | Manage fixed discipline tags (comma-separated)        |
 | `--accountable` / `--assign`, `-a`          | `add\|remove\|clear <vals>`  | Manage accountable; `me` = your name                  |
 | `--dependencies` / `--depends`, `-D`        | `add\|remove\|clear <vals>`  | Manage dependencies (comma-separated IDs)             |
@@ -247,6 +255,8 @@ List tickets. Defaults to the active queue if no scope is given. Ready tickets a
 
 ```bash
 atoshell list                                    # active queue (Ready + In Progress)
+atoshell list queue                              # same as default active queue
+atoshell list 2                                  # same as: atoshell list ready
 atoshell list ready                              # shows all tickets in ready column (status)
 atoshell list done                               # shows completed tickets
 atoshell list --mine                             # tickets accountable to you
@@ -259,8 +269,9 @@ atoshell list --status done                      # filter by status — no scope
 ```
 
 **Scopes:**
-- File-based: `queue` / `q` (default), `backlog` / `bl`, `done`
-- Status-based: `ready` / `rd`, `in-progress` / `ip`, `done` / `d`, `blockers` / `deps`
+- Default / active: `queue` (`Ready` + `In Progress`)
+- Columns: `backlog` / `bl` / `1`, `ready` / `rd` / `2`, `in-progress` / `ip` / `3`, `done` / `4`
+- Other: `blockers` / `deps`
 
 **Filters:**
 | Flag                                        | Example                            |

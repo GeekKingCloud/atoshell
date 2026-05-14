@@ -38,7 +38,9 @@ _setup
 # ── Parse flags ───────────────────────────────────────────────────────────────
 multi=false simple=false import_json=false import_json_src=""
 title="" description="" type="$TYPE_2" priority="$PRIORITY_2" size="$SIZE_2" status="$STATUS_READY"
-disciplines=() dependencies=() accountable=()
+declare -a disciplines=()
+declare -a dependencies=()
+declare -a accountable=()
 as=""
 json=false
 _cli_json_requested "$@" && json=true
@@ -87,6 +89,8 @@ while [[ $# -gt 0 ]]; do
       status="$(_resolve_status "$_sraw" "$json")" || exit 1 ;;
     --disciplines|--discipline|--dis|-d)
       [[ $# -lt 2 ]] && _cli_missing_value "$json" "--disciplines"
+      _cli_require_csv_values "$json" "--disciplines" "$2"
+      _cli_reject_empty_csv_fields "$json" "--disciplines" "$2"
       IFS=',' read -ra _discs <<< "$2"
       for _disc in "${_discs[@]}"; do
         _resolved_disc="$(_resolve_discipline "${_disc// /}" "$json")" || exit 1
@@ -95,17 +99,21 @@ while [[ $# -gt 0 ]]; do
       shift 2 ;;
     --accountable|--assign|-a)
       [[ $# -lt 2 ]] && _cli_missing_value "$json" "--accountable"
+      _cli_require_csv_values "$json" "--accountable" "$2"
+      _cli_reject_empty_csv_fields "$json" "--accountable" "$2"
       # Split into an array from commas; "me" = current user, "agent" = [agent]
       IFS=',' read -ra _a <<< "$2"
       for _u in "${_a[@]}"; do
         _u="${_u// /}"
         [[ "$_u" == "me" ]]    && _u="$USERNAME"
         [[ "$_u" == "agent" ]] && _u="[agent]"
-        [[ " ${accountable[*]} " == *" $_u "* ]] || accountable+=("$_u")
+        [[ " ${accountable[*]-} " == *" $_u "* ]] || accountable+=("$_u")
       done
       shift 2 ;;
     --dependencies|--dependency|--depends|-D)
       [[ $# -lt 2 ]] && _cli_missing_value "$json" "--dependencies"
+      _cli_require_csv_values "$json" "--dependencies" "$2"
+      _cli_reject_empty_csv_fields "$json" "--dependencies" "$2"
       # Split into an array from commas
       IFS=',' read -ra _deps <<< "$2"
       for _dep in "${_deps[@]}"; do
@@ -235,7 +243,7 @@ _prompt_ticket() {
 
 # ── JSON output accumulator ───────────────────────────────────────────────────
 _json_created_tickets='[]'
-_created_ticket_messages=()
+declare -a _created_ticket_messages=()
 dependencies_prevalidated=false
 
 _record_created_ticket_message() {
@@ -261,7 +269,7 @@ _record_created_ticket_message() {
 
 _flush_created_ticket_messages() {
   local msg
-  for msg in "${_created_ticket_messages[@]}"; do
+  for msg in "${_created_ticket_messages[@]+"${_created_ticket_messages[@]}"}"; do
     _outf '%s' "$msg"
   done
   _created_ticket_messages=()
@@ -535,10 +543,12 @@ _import_import_json() {
   local errors=0 json_errors='[]' i item pfx _t _dep proposed_id resolved_dep
   local cycle_ids_json cycle_ids_fmt _import_id
   local has_duplicate_ref_ids=false dep_ref_ambiguous=false
+  local -a import_items=()
+  mapfile -t import_items < <(jq -c '.[]' <<< "$raw")
   [[ "$(jq 'length' <<< "$duplicate_ref_ids_json")" -gt 0 ]] && has_duplicate_ref_ids=true
   declare -A batch_self_dep_ids=()
   for (( i=0; i<count; i++ )); do
-    item=$(printf '%s' "$raw" | jq --argjson i "$i" '.[$i]')
+    item="${import_items[$i]}"
     pfx=$(jq -r --argjson i "$i" '.[$i].item' <<< "$import_plan_json")
     proposed_id=$(jq -r --argjson i "$i" '.[$i].proposed_id' <<< "$import_plan_json")
     _import_id=$(printf '%s' "$item" | jq -r 'if has("id") and .id != null then (.id | tostring) else empty end')
@@ -660,7 +670,7 @@ _import_import_json() {
   _state_transaction_begin
   dependencies_prevalidated=true
   for (( i=0; i<count; i++ )); do
-    item=$(printf '%s' "$raw" | jq --argjson i "$i" '.[$i]')
+    item="${import_items[$i]}"
 
     title=$(printf '%s' "$item" | _jq_text '.title')
     description=$(printf '%s' "$item" | _jq_text '.description // .body // ""')
@@ -680,7 +690,7 @@ _import_import_json() {
       [[ -z "$_u" ]] && continue
       [[ "$_u" == "me" ]]    && _u="$USERNAME"
       [[ "$_u" == "agent" ]] && _u="[agent]"
-      [[ " ${accountable[*]:-} " == *" $_u "* ]] || accountable+=("$_u")
+      [[ " ${accountable[*]-} " == *" $_u "* ]] || accountable+=("$_u")
     done < <(printf '%s' "$item" | _jq_text '.accountable[]? // empty')
 
     # Dependencies already validated in Pass 1 — safe to add directly

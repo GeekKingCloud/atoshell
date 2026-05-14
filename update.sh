@@ -71,7 +71,10 @@ else
   printf '         atoshell could not update the existing install at %s,\n' "$INSTALL_DIR" >&2
   printf '         because it is not a git checkout.\n' >&2
   printf '         Reinstall manually with:\n' >&2
-  printf '         curl -fsSL %s | bash\n\n' "$INSTALLER_URL" >&2
+  printf '         Linux/Git Bash:\n' >&2
+  printf '           curl -fsSL %s | bash\n' "$INSTALLER_URL" >&2
+  printf '         macOS:\n' >&2
+  printf '           curl -fsSL %s | "$(brew --prefix)/bin/bash"\n\n' "$INSTALLER_URL" >&2
 fi
 
 # ── Phase 2: Project setup ────────────────────────────────────────────────────

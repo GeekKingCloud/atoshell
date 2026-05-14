@@ -12,7 +12,7 @@
 #   --type|--kind|-t <name|0-2>                                         Set ticket type (0=Bug 1=Feature 2=Task)
 #   --priority|-p <value|0-3>                                           Set priority (P0/P1/P2/P3 or 0–3)
 #   --size|-s <value|0-4>                                               Set size (XS/S/M/L/XL or 0–4)
-#   --status|--move|-S <status|col#>                                    Move ticket (name, multi-word, or column number 1–4)
+#   --status|-S <status|col#>                                           Move ticket (name, multi-word, or column number 1–4)
 #   --disciplines|--discipline|--dis|-d [add|remove|clear] <vals>       Manage fixed discipline tags (default: add)
 #   --accountable|--assign|-a [add|remove|clear] <vals>                 Manage accountable (default: add)
 #   --dependencies|--dependency|--depends|-D [add|remove|clear] <vals>  Manage dependencies (default: add)
@@ -45,9 +45,12 @@ src_file="$(_find_ticket_file "$ticket_id")"
 title_interactive=false title=""
 desc_interactive=false desc_changed=false description=""
 type="" priority="" size="" status=""
-disc_action=""   disc_ids=()
-acct_action=""   acct_ids=()
-dep_action=""    dep_ids=()
+disc_action=""
+acct_action=""
+dep_action=""
+declare -a disc_ids=()
+declare -a acct_ids=()
+declare -a dep_ids=()
 as=""
 any_changes=false
 
@@ -91,7 +94,7 @@ while [[ $# -gt 0 ]]; do
       size="$(_resolve_size "$2")"
       shift 2
       any_changes=true ;;
-    --status|--move|-S)
+    --status|-S)
       # Collect all remaining non-flag words as the status (supports "in progress" without quotes)
       shift  # consume the flag itself
       [[ $# -eq 0 ]] && { printf 'Error: --status requires a value.\n' >&2; exit 1; }
@@ -111,12 +114,16 @@ while [[ $# -gt 0 ]]; do
       case "$sub" in
         add)
           [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --disciplines add requires values.\n' >&2; exit 1; }
+          _cli_require_csv_values false "--disciplines" "$1"
+          _cli_reject_empty_csv_fields false "--disciplines" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           disc_action="add"
           for d in "${_v[@]}"; do disc_ids+=("${d// /}"); done
           any_changes=true ;;
         remove|rm)
           [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --disciplines remove requires values.\n' >&2; exit 1; }
+          _cli_require_csv_values false "--disciplines" "$1"
+          _cli_reject_empty_csv_fields false "--disciplines" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           disc_action="remove"
           for d in "${_v[@]}"; do disc_ids+=("${d// /}"); done
@@ -142,6 +149,8 @@ while [[ $# -gt 0 ]]; do
       case "$sub" in
         add)
           [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --accountable add requires values.\n' >&2; exit 1; }
+          _cli_require_csv_values false "--accountable" "$1"
+          _cli_reject_empty_csv_fields false "--accountable" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           acct_action="add"
           for u in "${_v[@]}"; do
@@ -153,6 +162,8 @@ while [[ $# -gt 0 ]]; do
           any_changes=true ;;
         remove|rm)
           [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --accountable remove requires values.\n' >&2; exit 1; }
+          _cli_require_csv_values false "--accountable" "$1"
+          _cli_reject_empty_csv_fields false "--accountable" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           acct_action="remove"
           for u in "${_v[@]}"; do
@@ -179,12 +190,16 @@ while [[ $# -gt 0 ]]; do
       case "$sub" in
         add)
           [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --dependencies add requires values.\n' >&2; exit 1; }
+          _cli_require_csv_values false "--dependencies" "$1"
+          _cli_reject_empty_csv_fields false "--dependencies" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           dep_action="add"
           dep_ids+=("${_v[@]}")
           any_changes=true ;;
         remove|rm)
           [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --dependencies remove requires values.\n' >&2; exit 1; }
+          _cli_require_csv_values false "--dependencies" "$1"
+          _cli_reject_empty_csv_fields false "--dependencies" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           dep_action="remove"
           dep_ids+=("${_v[@]}")
@@ -234,8 +249,8 @@ fi
 printf '\n'
 
 # Disciplines: validate names, warn on remove if not present
-resolved_disc_ids=()
-for d in "${disc_ids[@]}"; do
+declare -a resolved_disc_ids=()
+for d in "${disc_ids[@]+"${disc_ids[@]}"}"; do
   rd="$(_resolve_discipline "$d")"
   if [[ "$disc_action" == "remove" ]]; then
     present=$(jq -r --arg id "$ticket_id" --arg d "${rd,,}" \
@@ -253,8 +268,8 @@ for d in "${disc_ids[@]}"; do
 done
 
 # Accountable: warn on remove if not present
-resolved_acct_ids=()
-for u in "${acct_ids[@]}"; do
+declare -a resolved_acct_ids=()
+for u in "${acct_ids[@]+"${acct_ids[@]}"}"; do
   if [[ "$acct_action" == "remove" ]]; then
     present=$(jq -r --arg id "$ticket_id" --arg u "${u,,}" \
       '.tickets[] | select(.id | tostring == $id)
@@ -271,8 +286,8 @@ for u in "${acct_ids[@]}"; do
 done
 
 # Dependencies: warn on remove if not present
-resolved_dep_ids=()
-for dep in "${dep_ids[@]}"; do
+declare -a resolved_dep_ids=()
+for dep in "${dep_ids[@]+"${dep_ids[@]}"}"; do
   if [[ "$dep_action" == "remove" ]]; then
     present=$(jq -r --arg id "$ticket_id" --argjson dep "${dep}" \
       '.tickets[] | select(.id | tostring == $id)
@@ -300,7 +315,7 @@ if [[ "$dep_action" == "add" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
 fi
 
 # ── Apply changes ─────────────────────────────────────────────────────────────
-edit_messages=()
+declare -a edit_messages=()
 _edit_record() {
   local fmt="$1"
   shift
@@ -418,7 +433,7 @@ jq_inplace "$src_file" --arg id "$ticket_id" --arg by "$actor" \
   '(.tickets[] | select(.id | tostring == $id)) |= . + {updated_by: $by, updated_at: $ts}'
 _state_transaction_commit
 
-for msg in "${edit_messages[@]}"; do
+for msg in "${edit_messages[@]+"${edit_messages[@]}"}"; do
   _outf '%s\n' "$msg"
 done
 _outf '\n'

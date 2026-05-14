@@ -342,7 +342,6 @@ _rank_ready_tickets() {
   # (visible but clearly tagged), sorted by priority within each group.
 
   local -a _rr_remaining_blocked=() _rr_cyclic_ids=()
-  local _a _b _i _j
 
   # Externally-blocked: not in _output_ids and not cyclic.
   for _tid in "${_ticket_ids[@]}"; do
@@ -351,16 +350,11 @@ _rank_ready_tickets() {
   done
 
   # Sort externally-blocked by effective priority → size → id.
-  for (( _i=0; _i<${#_rr_remaining_blocked[@]}; _i++ )); do
-    for (( _j=_i+1; _j<${#_rr_remaining_blocked[@]}; _j++ )); do
-      _a=${_rr_remaining_blocked[$_i]} _b=${_rr_remaining_blocked[$_j]}
-      if   (( _eff_pri["$_b"] < _eff_pri["$_a"] )) ||
-           (( _eff_pri["$_b"] == _eff_pri["$_a"] && _eff_sz["$_b"] < _eff_sz["$_a"] )) ||
-           (( _eff_pri["$_b"] == _eff_pri["$_a"] && _eff_sz["$_b"] == _eff_sz["$_a"] && _b < _a )); then
-        _rr_remaining_blocked[$_i]=$_b _rr_remaining_blocked[$_j]=$_a
-      fi
-    done
-  done
+  mapfile -t _rr_remaining_blocked < <(
+    for _tid in "${_rr_remaining_blocked[@]+"${_rr_remaining_blocked[@]}"}"; do
+      printf '%d %d %d\n' "${_eff_pri[$_tid]}" "${_eff_sz[$_tid]}" "$_tid"
+    done | sort -n -k1,1 -k2,2 -k3,3 | awk '{print $3}'
+  )
   [[ ${#_rr_remaining_blocked[@]} -gt 0 ]] && _output_ids+=("${_rr_remaining_blocked[@]}")
 
   # Circular tickets sorted by original priority (eff priority is meaningless
@@ -368,16 +362,11 @@ _rank_ready_tickets() {
   for _tid in "${_ticket_ids[@]}"; do
     [[ "${_is_cyclic[$_tid]:-}" == "true" ]] && _rr_cyclic_ids+=("$_tid")
   done
-  for (( _i=0; _i<${#_rr_cyclic_ids[@]}; _i++ )); do
-    for (( _j=_i+1; _j<${#_rr_cyclic_ids[@]}; _j++ )); do
-      _a=${_rr_cyclic_ids[$_i]} _b=${_rr_cyclic_ids[$_j]}
-      if   (( _orig_pri["$_b"] < _orig_pri["$_a"] )) ||
-           (( _orig_pri["$_b"] == _orig_pri["$_a"] && _eff_sz["$_b"] < _eff_sz["$_a"] )) ||
-           (( _orig_pri["$_b"] == _orig_pri["$_a"] && _eff_sz["$_b"] == _eff_sz["$_a"] && _b < _a )); then
-        _rr_cyclic_ids[$_i]=$_b _rr_cyclic_ids[$_j]=$_a
-      fi
-    done
-  done
+  mapfile -t _rr_cyclic_ids < <(
+    for _tid in "${_rr_cyclic_ids[@]+"${_rr_cyclic_ids[@]}"}"; do
+      printf '%d %d %d\n' "${_orig_pri[$_tid]}" "${_eff_sz[$_tid]}" "$_tid"
+    done | sort -n -k1,1 -k2,2 -k3,3 | awk '{print $3}'
+  )
   [[ ${#_rr_cyclic_ids[@]} -gt 0 ]] && _output_ids+=("${_rr_cyclic_ids[@]}")
 
   # Reorder _all_ready_json to match _output_ids, annotating blocked/cyclic tickets

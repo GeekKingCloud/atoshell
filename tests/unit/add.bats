@@ -422,6 +422,22 @@ load '../helpers/setup'
   run atoshell add "Bad disc" --body "desc" --disciplines "NotADiscipline"
   [ "$status" -ne 0 ]
 }
+@test "add: empty discipline list exits cleanly" {
+  run atoshell add "Empty disc" --body "desc" --disciplines ""
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"requires at least one value"* ]]
+  [[ "$output" != *"unbound variable"* ]]
+}
+@test "add: trailing empty discipline is rejected" {
+  run atoshell add "Trailing disc" --body "desc" --disciplines "Frontend,"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
+}
+@test "add: doubled empty discipline is rejected" {
+  run atoshell add "Doubled disc" --body "desc" --disciplines "Frontend,,Backend"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
+}
 
 # ── 8. Accountable ────────────────────────────────────────────────────────────
 @test "add: single accountable stored" {
@@ -478,6 +494,17 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   count=$(jq '.tickets[] | select(.title=="Dedup accountable") | .accountable | length' .atoshell/queue.json)
   [ "$count" -eq 1 ]
+}
+@test "add: trailing empty accountable is rejected" {
+  run atoshell add "Trailing accountable" --body "desc" --accountable "lyra,"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
+}
+@test "add: agent-1 accountable is not normalized to [agent]" {
+  run atoshell add "Numbered agent accountable" --body "desc" --accountable "agent-1"
+  [ "$status" -eq 0 ]
+  asn=$(jq -r '.tickets[] | select(.title=="Numbered agent accountable") | .accountable[0]' .atoshell/queue.json)
+  [ "$asn" = "agent-1" ]
 }
 
 @test "add: 'me' and named accountable both stored" {
@@ -557,6 +584,11 @@ load '../helpers/setup'
 @test "add: non-numeric dependency ID exits with non-zero" {
   run atoshell add "Bad dep id" --body "desc" --dependencies "abc"
   [ "$status" -ne 0 ]
+}
+@test "add: trailing empty dependency is rejected" {
+  run atoshell add "Trailing dep" --body "desc" --dependencies "1,"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
 }
 
 @test "add: non-existent ticket dependency exits with non-zero" {
@@ -861,6 +893,24 @@ _assert_validation_type() {
   [ "$status" -eq 0 ]
   len=$(jq '.tickets[] | select(.title=="Acct import") | .accountable | length' .atoshell/queue.json)
   [ "$len" -eq 2 ]
+}
+@test "add --import: empty arrays for optional lists are accepted" {
+  _write_json '[{"title":"Empty lists","disciplines":[],"accountable":[],"dependencies":[]}]'
+  run atoshell add --import tickets.json
+  [ "$status" -eq 0 ]
+  jq -e '.tickets[] | select(.title=="Empty lists")
+    | (.disciplines | length == 0)
+      and (.accountable | length == 0)
+      and (.dependencies | length == 0)' .atoshell/queue.json >/dev/null
+}
+@test "add --import: agent and agent-1 accountable stay distinct" {
+  _write_json '[{"title":"Agent import accountable","accountable":["agent","agent-1"]}]'
+  run atoshell add --import tickets.json
+  [ "$status" -eq 0 ]
+  jq -e '.tickets[] | select(.title=="Agent import accountable")
+    | (.accountable | contains(["[agent]"]))
+      and (.accountable | contains(["agent-1"]))
+      and (.accountable | length == 2)' .atoshell/queue.json >/dev/null
 }
 @test "add --import: valid dependency stored" {
   _write_json '[{"title":"Dep import","dependencies":[1]}]'

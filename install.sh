@@ -3,11 +3,18 @@
 #
 # Usage:
 #   atoshell install [options]
-#   bash install.sh [options]
-#   curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
+#   bash install.sh [options]  # with Bash 4.3+
+#
+# Install from the canonical repository:
+#   Linux/Git Bash:
+#     curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
+#   macOS:
+#     brew install bash jq git
+#     curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"
 #
 # Or run directly after cloning:
-#   bash install.sh
+#   bash install.sh          # Linux/Git Bash
+#   "$(brew --prefix)/bin/bash" install.sh  # macOS
 #
 # Options:
 #   --help|-h   Show install usage help and exit
@@ -18,6 +25,23 @@ set -euo pipefail
 REPO="https://github.com/GeekKingCloud/atoshell.git"
 INSTALL_DIR="$HOME/.atoshell"
 BIN_DIR="$HOME/.local/bin"
+
+require_modern_bash() {
+  local major="${BASH_VERSINFO[0]:-0}"
+  local minor="${BASH_VERSINFO[1]:-0}"
+
+  if (( major > 4 || (major == 4 && minor >= 3) )); then
+    return 0
+  fi
+
+  printf 'Error: Atoshell requires Bash 4.3 or newer; current shell is Bash %s.\n' "${BASH_VERSION:-unknown}" >&2
+  printf 'On macOS, install modern Bash with: brew install bash\n' >&2
+  printf 'Then run the installer with: "$(brew --prefix)/bin/bash" install.sh\n' >&2
+  printf 'For curl installs, use: curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"\n' >&2
+  exit 1
+}
+
+require_modern_bash
 
 show_help() {
   awk 'NR==1{next} /^# ── /{exit} /^#/{sub(/^# ?/,""); print; next} /^[^#]/{exit}' "$0"
@@ -44,6 +68,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+shell_quote() {
+  local value="${1//\'/\'\\\'\'}"
+  printf "'%s'" "$value"
+}
+
+cmd_escape_path() {
+  local value="${1//%/%%}"
+  printf '%s' "$value"
+}
+
 write_windows_cmd_wrapper() {
   local command_name="$1"
   local target_script="$2"
@@ -66,6 +100,8 @@ write_windows_cmd_wrapper() {
     bash_path="$(cygpath -w "$(command -v bash)")"
   fi
   target_path="$(cygpath -w "$target_script")"
+  bash_path="$(cmd_escape_path "$bash_path")"
+  target_path="$(cmd_escape_path "$target_path")"
   printf '@echo off\r\nsetlocal\r\n"%s" "%s" %%*\r\n' "$bash_path" "$target_path" > "$BIN_DIR/$command_name.cmd"
 }
 
@@ -105,7 +141,7 @@ fi
 mkdir -p "$BIN_DIR"
 chmod +x "$INSTALL_DIR/atoshell.sh"
 for _cmd in atoshell ato; do
-  printf '#!/usr/bin/env bash\nexec "%s/atoshell.sh" "$@"\n' "$INSTALL_DIR" > "$BIN_DIR/$_cmd"
+  printf '#!/usr/bin/env bash\nexec %s "$@"\n' "$(shell_quote "$INSTALL_DIR/atoshell.sh")" > "$BIN_DIR/$_cmd"
   chmod +x "$BIN_DIR/$_cmd"
   write_windows_cmd_wrapper "$_cmd" "$INSTALL_DIR/atoshell.sh"
 done

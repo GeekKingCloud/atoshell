@@ -29,7 +29,11 @@
 #   --quiet    | -q                                    — Suppress decorative output; auto-enabled on non-TTY stdout
 #
 # Install:
-#   curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
+#   Linux/Git Bash:
+#     curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
+#   macOS:
+#     brew install bash jq git
+#     curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 set -euo pipefail

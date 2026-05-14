@@ -47,7 +47,7 @@ done
 # ── Delete ────────────────────────────────────────────────────────────────────
 _outf '\n'
 failed=false
-delete_messages=()
+declare -a delete_messages=()
 _state_lock_acquire
 _state_transaction_begin
 for id in "${ids[@]}"; do
@@ -69,9 +69,10 @@ for id in "${ids[@]}"; do
   # Warn about (and offer to remove) any tickets that depend on the deleted ID
   for dep_file in "$QUEUE_FILE" "$BACKLOG_FILE" "$DONE_FILE"; do
     [[ ! -f "$dep_file" ]] && continue
+    declare -a dependents=()
     mapfile -t dependents < <(_jq_text --argjson id "$id" \
       '.tickets[] | select(.dependencies | map(. == $id) | any) | .id | tostring' "$(_state_transaction_current_file "$dep_file")")
-    for dep_id in "${dependents[@]}"; do
+    for dep_id in "${dependents[@]+"${dependents[@]}"}"; do
       dep_title=$(_jq_text --arg dep_id "$dep_id" '.tickets[] | select(.id | tostring == $dep_id) | .title' "$(_state_transaction_current_file "$dep_file")")
       dep_title_display="$(_terminal_safe_line "$dep_title")"
       if $yes || ask_yn "  #$dep_id \"$dep_title_display\" depends on #$id — remove that dependency?" "y"; then
@@ -85,7 +86,7 @@ for id in "${ids[@]}"; do
   done
 done
 _state_transaction_commit
-for msg in "${delete_messages[@]}"; do
+for msg in "${delete_messages[@]+"${delete_messages[@]}"}"; do
   _outf '%s\n' "$msg"
 done
 _outf '\n'

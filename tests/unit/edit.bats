@@ -198,18 +198,16 @@ load '../helpers/setup'
   [ "$sz" = "XL" ]
 }
 
-# ── 7. --status / --move / -S ─────────────────────────────────────────────────
+# ── 7. --status / -S ──────────────────────────────────────────────────────────
 @test "edit: --status moves ticket within queue" {
   run atoshell edit 1 --status "In Progress"
   [ "$status" -eq 0 ]
   st=$(jq -r '.tickets[] | select(.id==1) | .status' .atoshell/queue.json)
   [ "$st" = "In Progress" ]
 }
-@test "edit: --move alias works" {
+@test "edit: --move removed alias exits non-zero" {
   run atoshell edit 1 --move "In Progress"
-  [ "$status" -eq 0 ]
-  st=$(jq -r '.tickets[] | select(.id==1) | .status' .atoshell/queue.json)
-  [ "$st" = "In Progress" ]
+  [ "$status" -ne 0 ]
 }
 @test "edit: -S short flag moves ticket" {
   run atoshell edit 1 -S "In Progress"
@@ -282,6 +280,11 @@ load '../helpers/setup'
   count=$(jq '.tickets[] | select(.id==1) | .disciplines | length' .atoshell/queue.json)
   [ "$count" -ge 2 ]
 }
+@test "edit: trailing empty discipline is rejected" {
+  run atoshell edit 1 --dis Frontend,
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
+}
 
 # ── 9. --accountable ──────────────────────────────────────────────────────────
 @test "edit: --accountable without subcommand defaults to add" {
@@ -333,6 +336,22 @@ load '../helpers/setup'
   present=$(jq -r '.tickets[] | select(.id==1) | .accountable | any(. == "testuser")' .atoshell/queue.json)
   [ "$present" = "true" ]
 }
+@test "edit: trailing empty accountable is rejected and leaves ticket unchanged" {
+  before=$(jq -c '.tickets[] | select(.id==1) | .accountable' .atoshell/queue.json)
+  run atoshell edit 1 --accountable add lyra,
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
+  after=$(jq -c '.tickets[] | select(.id==1) | .accountable' .atoshell/queue.json)
+  [ "$before" = "$after" ]
+}
+@test "edit: agent-1 accountable is not normalized to [agent]" {
+  run atoshell edit 1 --accountable agent-1
+  [ "$status" -eq 0 ]
+  present=$(jq -r '.tickets[] | select(.id==1) | .accountable | any(. == "agent-1")' .atoshell/queue.json)
+  agent_present=$(jq -r '.tickets[] | select(.id==1) | .accountable | any(. == "[agent]")' .atoshell/queue.json)
+  [ "$present" = "true" ]
+  [ "$agent_present" = "false" ]
+}
 
 # ── 10. --dependencies ────────────────────────────────────────────────────────
 @test "edit: --depends without subcommand defaults to add" {
@@ -383,6 +402,11 @@ load '../helpers/setup'
   run atoshell edit 1 --depends remove 99
   [ "$status" -eq 0 ]
   [[ "$output" == *"[WARN]"* ]]
+}
+@test "edit: trailing empty dependency is rejected" {
+  run atoshell edit 1 --depends add 2,
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"empty value"* ]]
 }
 @test "edit: dependency add rejects newly created cycles" {
   printf '{"tickets":[

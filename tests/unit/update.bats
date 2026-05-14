@@ -158,7 +158,10 @@ _minimal_update_path() {
 @test "update: Phase 1 manual reinstall — output shows reinstall command" {
   run atoshell update
   [[ "$output" == *"Reinstall manually with"* ]]
+  [[ "$output" == *"Linux/Git Bash"* ]]
   [[ "$output" == *"curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash"* ]]
+  [[ "$output" == *"macOS"* ]]
+  [[ "$output" == *"curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | \"\$(brew --prefix)/bin/bash\""* ]]
 }
 
 # ── 4. Phase 1 — no .git, minimal PATH ─────────────────────────────────────────
@@ -168,8 +171,8 @@ _minimal_update_path() {
   local tdir; tdir="$(_minimal_update_path)"
   local bash_path; bash_path="$(_real_bash)"
   cd "$ATOSHELL_REPO"
-  run env -i \
-    HOME="$HOME" USER="$USER" LC_ALL=C \
+  run env \
+    HOME="$HOME" USER="$USER" LC_ALL=C PWD="$TEST_PROJECT" \
     BATS_TEST_TMPDIR="$BATS_TEST_TMPDIR" \
     ATOSHELL_DIR="$ATOSHELL_REPO" \
     PATH="$tdir" \
@@ -320,13 +323,13 @@ _minimal_update_path() {
   local fake_root="$BATS_TEST_TMPDIR/fake_root"
   mkdir -p "$fake_root/.atoshell.example"
   rm -f "$TEST_PROJECT/.atoshell/config.env"
-  cd "$TEST_PROJECT"
-  run env -i \
-    HOME="$HOME" USER="$USER" LC_ALL=C \
+  cd "$ATOSHELL_REPO"
+  run env \
+    HOME="$HOME" USER="$USER" LC_ALL=C PWD="$TEST_PROJECT" \
     BATS_TEST_TMPDIR="$BATS_TEST_TMPDIR" \
     ATOSHELL_DIR="$fake_root" \
     PATH="$tdir" \
-    "$bash_path" "$ATOSHELL_REPO/update.sh" 2>&1
+    "$bash_path" -c 'cd "$1" && exec "$2" "$3" 2>&1' _ "$TEST_PROJECT" "$bash_path" "$ATOSHELL_REPO/update.sh"
   [ "$status" -eq 0 ]
   grep -qF '# .atoshell/config.env' "$TEST_PROJECT/.atoshell/config.env"
   grep -qF '# Controls created_at, updated_at, and ticket comment timestamps.' "$TEST_PROJECT/.atoshell/config.env"

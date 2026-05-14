@@ -90,14 +90,18 @@ _ticket_file_count() {
 @test "state lock: invalid old metadata is recovered only after stale age" {
   load_atoshell_helpers
   mkdir -p "$TEST_PROJECT/.atoshell/.lock"
+  local meta="$TEST_PROJECT/.atoshell/.lock/meta"
   printf 'pid=not-a-pid\ncreated_at_epoch=not-a-time\ncommand=bad\ncwd=%s\n' "$TEST_PROJECT" \
-    > "$TEST_PROJECT/.atoshell/.lock/meta"
-  touch -d '10 seconds ago' "$TEST_PROJECT/.atoshell/.lock/meta"
+    > "$meta"
+  local base_mtime fake_now
+  base_mtime="$(_state_lock_mtime_epoch "$meta")"
+  fake_now=$((base_mtime + 10))
+  _state_now_epoch() { printf '%s\n' "$fake_now"; }
 
   _state_lock_reap_stale
   [ -d "$TEST_PROJECT/.atoshell/.lock" ]
 
-  touch -d '10 minutes ago' "$TEST_PROJECT/.atoshell/.lock/meta"
+  fake_now=$((base_mtime + 600))
   _state_lock_reap_stale
   [ ! -e "$TEST_PROJECT/.atoshell/.lock" ]
 }

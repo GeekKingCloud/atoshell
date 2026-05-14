@@ -43,17 +43,17 @@ load '../helpers/setup'
 @test "atoshell version: prints repo version" {
   run atoshell version
   [ "$status" -eq 0 ]
-  [ "$output" = "atoshell 2.0.0" ]
+  [ "$output" = "atoshell $(<"$ATOSHELL_REPO/VERSION")" ]
 }
 @test "atoshell --version: prints repo version" {
   run atoshell --version
   [ "$status" -eq 0 ]
-  [ "$output" = "atoshell 2.0.0" ]
+  [ "$output" = "atoshell $(<"$ATOSHELL_REPO/VERSION")" ]
 }
 @test "atoshell -v: prints repo version" {
   run atoshell -v
   [ "$status" -eq 0 ]
-  [ "$output" = "atoshell 2.0.0" ]
+  [ "$output" = "atoshell $(<"$ATOSHELL_REPO/VERSION")" ]
 }
 @test "repo bin/atoshell wrapper routes to dispatcher" {
   run bash "$ATOSHELL_REPO/bin/atoshell" help

@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.1.0]
+
+### Changed
+
+- Raised the supported shell baseline to Bash 4.3+ across runtime, installer,
+  documentation, and CI smoke coverage.
+- Added Linux, macOS, and Windows smoke checks for repo-local and installed
+  launchers.
+- Made smoke-test dependency setup self-contained for GitHub-hosted runners.
+- Updated GitHub Actions checkout usage to the Node 24-compatible action.
+- Clarified install and update guidance for Linux, Git Bash, and macOS Homebrew
+  Bash.
+- `list` now accepts board column numbers `1`-`4` as scope aliases and keeps
+  `queue` as the explicit active-queue scope.
+- `show board --full` / `-f` now wraps full ticket titles across multiple board
+  lines; `--all` keeps the previous full-board behavior.
+- Removed the one-letter `list q` and `list d` scope aliases.
+- Removed the `edit --move` alias; use `edit --status` / `-S` instead.
+
+### Fixed
+
+- Guarded Bash 4.3 empty-array expansion behavior across ticket mutation paths.
+- Tightened comma-separated argument validation so empty fields fail before
+  partially mutating ticket state.
+- Preserved `agent-1` style accountable values while still supporting `agent`
+  as shorthand for `[agent]`.
+- Avoided unnecessary fallback noise in macOS smoke setup when Homebrew
+  dependencies are already installed.
+
 ## [2.0.0]
 
 Initial public release of Atoshell. This is the first supported release; earlier
@@ -13,6 +42,7 @@ track.
 - Local-only project settings live in `config.env`, with local ID metadata in `meta.json`.
 - Supported installed command names are `atoshell` and `ato`.
 - Version output is backed by the checked-in `VERSION` file.
+- Bash 4.3+ is the supported shell baseline; stock macOS `/bin/bash` exits early with modern Bash install guidance.
 
 ### Workflow
 

@@ -26,6 +26,7 @@ Installer behavior:
 - `install.sh` installs Atoshell from its canonical repository into `~/.atoshell` by default.
 - The installed command names are `atoshell` and `ato`; do not add alternate branded command names.
 - On Windows/Git Bash, the installer also writes `atoshell.cmd` and `ato.cmd` beside the shell launchers so PowerShell and `cmd.exe` resolve the installed commands.
+- Atoshell requires Bash 4.3 or newer. On macOS, do not rely on the stock `/bin/bash`; install modern Bash with Homebrew and put it before `/bin` in `PATH`.
 - `atoshell update` uses `git pull --ff-only` for git-based installs. If the install is not a git checkout, it prints the manual reinstall command and does not execute a remote installer fallback.
 - Do not add repo-source overrides or project-local paths for testing local checkouts.
 - Do not create coding-agent-owned scratch or capture folders such as `codex-logs`, `.codex`, `agent-logs`, or `scratch` inside `.reef/`, `.lumberhack/`, `.atoshell/`, generated runtime folders, or worker worktrees. Tool-owned runtime logs remain in their documented tool paths. Put disposable agent captures under `$env:TEMP\codex\...` and durable agent scratch under `C:\Users\thete\.codex\scratch\...`.
@@ -73,6 +74,11 @@ All structured output uses `--json` / `-j`. Prefer it over parsing human output.
 | Your current assignments         | `atoshell list --agent --json`        |
 | Tickets blocked by dependencies  | `atoshell list blockers --json`       |
 | Full-text search                 | `atoshell search "<query>" --json`    |
+
+`list` defaults to the active queue (`Ready` + `In Progress`). Explicit list
+scopes are `queue`, `backlog`/`bl`/`1`, `ready`/`rd`/`2`,
+`in-progress`/`ip`/`3`, `done`/`4`, and `blockers`/`deps`. The old one-letter
+`q` and `d` scopes are not supported.
 
 `show next` only surfaces tickets that are unassigned or already assigned to the current user. `take` with no ticket argument defaults to `take next`. `take next` pulls from all ranked ready tickets regardless of assignee.
 

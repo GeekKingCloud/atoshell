@@ -49,7 +49,7 @@ EOF
   [[ "$output" == *'+------------------------+------------------------+------------------------+------------------------+'* ]]
 }
 
-@test "_print_board: full view shows all tickets without a truncation marker" {
+@test "_print_board: all view shows all tickets without a truncation marker" {
   cat > "$QUEUE_FILE" <<'EOF'
 {"tickets":[
   {"id":1,"title":"Ready 1","status":"Ready","priority":"P2","size":"M"},
@@ -65,6 +65,21 @@ EOF
 
   [[ "$output" == *'#6 Ready 6'* ]]
   [[ "$output" != *'-- 1 more --'* ]]
+}
+
+@test "_print_board: full-title view wraps long titles" {
+  cat > "$QUEUE_FILE" <<'EOF'
+{"tickets":[
+  {"id":1,"title":"A very long ready title that needs wrapping across board lines","status":"Ready","priority":"P2","size":"M"}
+]}
+EOF
+
+  output=$(_print_board false false true)
+
+  [[ "$output" == *'#1 A very long ready'* ]]
+  [[ "$output" == *'title that needs'* ]]
+  [[ "$output" == *'ready-'* ]]
+  [[ "$output" == *'needs-'* ]]
 }
 
 @test "_print_board: empty files render empty columns" {

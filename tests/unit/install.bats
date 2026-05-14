@@ -35,7 +35,10 @@ if [[ "$1" == clone ]]; then
     exit 1
   fi
   mkdir -p "$dest/.git"
-  touch "$dest/atoshell.sh"
+  cat > "$dest/atoshell.sh" <<'INNER'
+#!/usr/bin/env bash
+exit 0
+INNER
 fi
 exit 0
 EOF
@@ -157,6 +160,24 @@ _tools_dir() {
   [ "$status" -eq 0 ]
   grep -q "$INSTALL_DIR" "$BIN_DIR/ato"
   grep -q "$INSTALL_DIR" "$BIN_DIR/ato.cmd"
+}
+@test "install: generated launchers quote special home paths" {
+  export HOME="$BATS_TEST_TMPDIR/home with spaces % and 'quote"
+  export INSTALL_DIR="$HOME/.atoshell"
+  export BIN_DIR="$HOME/.local/bin"
+  mkdir -p "$HOME"
+
+  run atoshell install
+
+  [ "$status" -eq 0 ]
+  "$BIN_DIR/atoshell"
+  "$BIN_DIR/ato"
+  grep -Fq "exec '" "$BIN_DIR/atoshell"
+  grep -Fq "exec '" "$BIN_DIR/ato"
+  ! grep -Fq 'exec "' "$BIN_DIR/atoshell"
+  ! grep -Fq 'exec "' "$BIN_DIR/ato"
+  grep -Fq '%%' "$BIN_DIR/atoshell.cmd"
+  grep -Fq '%%' "$BIN_DIR/ato.cmd"
 }
 @test "install: output contains 'atoshell installed'" {
   run atoshell install

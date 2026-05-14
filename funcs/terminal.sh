@@ -135,6 +135,28 @@ _cli_missing_value() {
   _cli_error "$json" "MISSING_ARGUMENT" "$message" "option" "$option"
 }
 
+_cli_require_csv_values() {
+  local json="$1"
+  local option="$2"
+  local value="$3"
+  local compact="${value//[ ,]/}"
+
+  [[ -n "$compact" ]] && return 0
+
+  _cli_error "$json" "MISSING_ARGUMENT" "$option requires at least one value." "option" "$option"
+}
+
+_cli_reject_empty_csv_fields() {
+  local json="$1"
+  local option="$2"
+  local value="$3"
+  local compact="${value// /}"
+
+  [[ "$compact" != ,* && "$compact" != *, && "$compact" != *,,* ]] && return 0
+
+  _cli_error "$json" "INVALID_ARGUMENT" "$option contains an empty value." "option" "$option"
+}
+
 # ── Interactive helpers ──────────────────────────────────────────────────────
 _stdin_is_tty() {
   [[ -t 0 ]]

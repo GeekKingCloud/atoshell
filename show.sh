@@ -10,8 +10,9 @@
 #
 # Options (Output):
 #   --details        Show created/edited timestamps for ticket and comments (id view)
-#   --done           Include Done column (board view)
-#   --full|--all|-f  Include Done and show all tickets per column (board view)
+#   --done           Include Done and show all tickets per column (board view)
+#   --all            Include Done and show all tickets per column (board view)
+#   --full|-f        Wrap board cells; continued lines are indented and end with "-"
 #   --json|-j        Output ticket as JSON (agent-friendly)
 #   --help|-h        Show 'show' usage help and exit
 
@@ -24,7 +25,7 @@ _setup_readonly
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
 scope=""
-details=false done=false full=false json=false
+details=false done=false all=false full=false json=false
 _cli_json_requested "$@" && json=true
 
 while [[ $# -gt 0 ]]; do
@@ -36,7 +37,10 @@ while [[ $# -gt 0 ]]; do
     --done)
       done=true
       shift ;;
-    --full|--all|-f)
+    --all)
+      all=true
+      shift ;;
+    --full|-f)
       full=true
       shift ;;
     --json|-j)
@@ -58,9 +62,9 @@ done
 # ── Board view ────────────────────────────────────────────────────────────────
 # I make this typo far too often...
 if [[ "$scope" == "board" || "$scope" == "baord" ]]; then
-  $full && done=true
-  $done && full=true
-  _print_board "$done" "$full"
+  $all && done=true
+  $done && all=true
+  _print_board "$done" "$all" "$full"
   exit 0
 fi
 

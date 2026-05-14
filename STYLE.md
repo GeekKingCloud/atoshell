@@ -125,6 +125,7 @@ done
 ### Quoting and safety
 
 - Quote shell expansions unless word-splitting is intentional.
+- With `set -u` and Bash 4.3 support, iterate arrays that may be empty as `"${array[@]+"${array[@]}"}"` instead of plain `"${array[@]}"`; the longer form avoids unbound empty-array errors on the minimum supported Bash.
 - Validate ticket IDs, dependency IDs, and user-provided enums before writing.
 - Sanitize user-entered text that will be rendered back to terminals.
 - Keep file operations scoped to `.atoshell/`.
@@ -132,7 +133,7 @@ done
 
 ## Portability And Environment
 
-- atoshell must stay portable across normal Bash environments, including Linux and Git Bash. Do not assume Linux CI alone proves portability.
+- atoshell requires Bash 4.3 or newer and must stay portable across normal modern Bash environments, including Linux, macOS with Homebrew Bash, and Git Bash. Do not assume Linux CI alone proves portability.
 - Do not hardcode absolute machine paths, usernames, WSL bridge paths, or repo-external temp locations into runtime code or permanent tests.
 - Keep path resolution anchored on repo helpers such as `ATOSHELL_DIR`, `_resolve_project`, and sibling-path helpers instead of `$PWD` assumptions.
 - `curl` is part of the bootstrap/update story and may stay there. Do not add it as a hidden requirement for ordinary ticket commands.

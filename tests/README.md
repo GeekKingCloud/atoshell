@@ -6,7 +6,7 @@ Install bats system-wide (required once per machine):
 
 ```bash
 # macOS
-brew install bats-core
+brew install bash bats-core jq git
 
 # Ubuntu/Debian
 sudo apt install bats
