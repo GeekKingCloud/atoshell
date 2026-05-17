@@ -59,6 +59,16 @@ setup() {
   result=$(_out "hello")
   [ -z "$result" ]
 }
+@test "_outln: prints literal string when ATOSHELL_QUIET=0" {
+  ATOSHELL_QUIET=0
+  result=$(_outln "%s %n \\ path")
+  [ "$result" = "%s %n \\ path" ]
+}
+@test "_outln: suppresses output when ATOSHELL_QUIET=1" {
+  ATOSHELL_QUIET=1
+  result=$(_outln "hello")
+  [ -z "$result" ]
+}
 @test "_outf: prints formatted string when ATOSHELL_QUIET=0" {
   ATOSHELL_QUIET=0
   result=$(_outf "%s %s" "foo" "bar")

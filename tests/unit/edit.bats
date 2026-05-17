@@ -75,6 +75,50 @@ load '../helpers/setup'
   [[ "$output" != *$'\e'* ]]
   [[ "$output" != *$'\a'* ]]
 }
+@test "edit: valid but absent accountable removal does not stamp audit fields" {
+  before=$(jq -c '.tickets[] | select(.id==1) | {updated_by, updated_at}' .atoshell/queue.json)
+  run atoshell edit 1 --accountable remove nobody
+  [ "$status" -eq 0 ]
+  after=$(jq -c '.tickets[] | select(.id==1) | {updated_by, updated_at}' .atoshell/queue.json)
+  [ "$after" = "$before" ]
+}
+
+@test "edit: invalid dependency removal exits non-zero without mutation" {
+  before=$(jq -c '.tickets[] | select(.id==1)' .atoshell/queue.json)
+  run atoshell edit 1 --dependencies remove abc
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not a valid ticket ID"* ]]
+  after=$(jq -c '.tickets[] | select(.id==1)' .atoshell/queue.json)
+  [ "$after" = "$before" ]
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
+}
+
+@test "edit: accountable removal rechecks newly present value under lock" {
+  real_mkdir="$(command -v mkdir)"
+  real_jq="$(command -v jq)"
+  marker="$BATS_TEST_TMPDIR/injected-accountable"
+
+  cat > "$BATS_TEST_TMPDIR/bin/mkdir" <<EOF
+#!/usr/bin/env bash
+if [[ " \$* " == *".atoshell/.lock"* && ! -e "$marker" ]]; then
+  touch "$marker"
+  tmp="$TEST_PROJECT/.atoshell/queue.json.tmp"
+  "$real_jq" '(.tickets[] | select(.id == 1) | .accountable) += ["lateuser"]' \
+    "$TEST_PROJECT/.atoshell/queue.json" > "\$tmp" && mv "\$tmp" "$TEST_PROJECT/.atoshell/queue.json"
+fi
+exec "$real_mkdir" "\$@"
+EOF
+  chmod +x "$BATS_TEST_TMPDIR/bin/mkdir"
+
+  run atoshell edit 1 --accountable remove lateuser
+  [ "$status" -eq 0 ]
+
+  present=$(jq '.tickets[] | select(.id==1) | .accountable | any(. == "lateuser")' .atoshell/queue.json)
+  [ "$present" = "false" ]
+  [[ "$output" == *"[OK] accountable removed: lateuser"* ]]
+  [[ "$output" != *"not on ticket #1"* ]]
+}
 
 # ── 3. --description / --desc / --body / -b ───────────────────────────────────
 @test "edit: --description sets description" {

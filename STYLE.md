@@ -9,6 +9,7 @@ This guide is for contributors working on atoshell itself. `README.md` is the us
 - Each user-facing command lives in its own `*.sh` script.
 - Shared runtime/config/file helpers live in `funcs/helpers.sh`.
 - Ranking and dependency logic live in `funcs/algorithms.sh`.
+- Bulk ticket import planning and validation helpers live in `funcs/add_import.sh`.
 - Human-readable rendering lives in `funcs/prints.sh`.
 - Project state is split into shared ticket files (`queue.json`, `backlog.json`, `done.json`) and local-only files (`config.env`, `meta.json`).
 
@@ -115,8 +116,8 @@ done
 
 ### Output and errors
 
-- Prefer `_out` / `_outf` for non-error human output so quiet mode works everywhere.
-- Use `_out` when a line-oriented helper keeps the code clearer than repeated `printf` calls.
+- Prefer `_out`, `_outln`, and `_outf` for non-error human output so quiet mode works everywhere.
+- Use `_out` / `_outln` for user-controlled or already-rendered text. Use `_outf` only with a static printf format string.
 - Keep machine-readable output behind `--json`.
 - Use `_json_error` for structured error contracts.
 - Exit from main scripts on failure; do not rely on fallthrough after a fatal error.

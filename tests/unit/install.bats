@@ -5,7 +5,7 @@
 # the default install paths stay isolated.
 #
 # Fake git: clone creates $INSTALL_DIR/.git + atoshell.sh stub so chmod succeeds;
-#           all other git sub-commands (pull, sparse-checkout, -C …) exit 0.
+#           all other git sub-commands (pull, sparse-checkout, -C ...) exit 0.
 #
 # Dependency-guard tests use env -i + a tools_dir containing symlinks to only the
 # tools that should be visible, so command -v genuinely fails for the missing tool.
@@ -24,10 +24,13 @@ setup() {
     > "$BATS_TEST_TMPDIR/bin/atoshell"
   chmod +x "$BATS_TEST_TMPDIR/bin/atoshell"
 
-  # Fake git: clone → creates .git + stub atoshell.sh; everything else → exit 0
+  # Fake git: clone creates .git + stub atoshell.sh; everything else exits 0.
   mkdir -p "$BATS_TEST_TMPDIR/git_bin"
   cat > "$BATS_TEST_TMPDIR/git_bin/git" <<'EOF'
 #!/usr/bin/env bash
+if [[ -n "${BATS_TEST_TMPDIR:-}" ]]; then
+  printf '%s\n' "$*" >> "$BATS_TEST_TMPDIR/git_calls.log"
+fi
 if [[ "$1" == clone ]]; then
   dest="${@: -1}"
   if [[ -d "$dest" && -n "$(find "$dest" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" && ! -d "$dest/.git" ]]; then
@@ -189,7 +192,6 @@ _tools_dir() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"ato init"* ]]
 }
-
 # ── 2. Update (already installed) ─────────────────────────────────────────────
 @test "install: exit code 0 when updating existing install" {
   mkdir -p "$INSTALL_DIR/.git"
@@ -203,6 +205,13 @@ _tools_dir() {
   run atoshell install
   [ "$status" -eq 0 ]
   [[ "$output" == *"atoshell updated"* ]]
+}
+@test "install: existing install pulls with fast-forward only" {
+  mkdir -p "$INSTALL_DIR/.git"
+  touch "$INSTALL_DIR/atoshell.sh"
+  run atoshell install
+  [ "$status" -eq 0 ]
+  grep -qxF -- "-C $INSTALL_DIR pull --ff-only" "$BATS_TEST_TMPDIR/git_calls.log"
 }
 
 # ── 3. PATH advisory ──────────────────────────────────────────────────────────

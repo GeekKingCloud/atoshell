@@ -222,7 +222,7 @@ Flags can be combined freely in a single command.
 | `--dependencies` / `--depends`, `-D`        | `add\|remove\|clear <vals>`  | Manage dependencies (comma-separated IDs)             |
 | `--as <agent-N\|number>`                    | `agent-N` or `N`             | Set `updated_by` to a numbered agent in non-TTY mode  |
 
-Removing a discipline, accountable, or dependency that isn't on the ticket prints a warning but does not fail.
+Removing a valid discipline, accountable, or dependency that isn't on the ticket prints a warning but does not fail. Invalid dependency IDs still fail validation.
 `--as` is only allowed in non-interactive mode and only accepts `agent-N` or a bare positive number.
 `fe` and `be` are accepted as shorthand for `Frontend` and `Backend` in discipline values.
 See [Disciplines](#disciplines) for the fixed labels and when to use each one.

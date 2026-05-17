@@ -18,6 +18,12 @@ _out() {
   [[ "$ATOSHELL_QUIET" == "1" ]] || printf '%s' "$*"
 }
 
+# Print a pre-rendered line literally. Use this for user-controlled or already
+# formatted text; keep _outf for static printf format strings.
+_outln() {
+  [[ "$ATOSHELL_QUIET" == "1" ]] || printf '%s\n' "$*"
+}
+
 _outf() {
   [[ "$ATOSHELL_QUIET" == "1" ]] || printf "$@"
 }

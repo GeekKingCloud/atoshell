@@ -48,38 +48,79 @@ done
 _outf '\n'
 failed=false
 declare -a delete_messages=()
+declare -a confirmed_ids=()
+declare -A dep_prompted=()
+declare -A dep_remove_confirmed=()
+
+if ! $yes; then
+  for id in "${ids[@]}"; do
+    if ! src_file=$(_find_ticket_file "$id" 2>/dev/null); then
+      _outf '  Error: ticket #%s not found.\n' "$(_terminal_safe_line "$id")" >&2
+      failed=true
+      continue
+    fi
+    title=$(_jq_text --arg id "$id" '.tickets[] | select(.id | tostring == $id) | .title' "$src_file" 2>/dev/null)
+    title_display="$(_terminal_safe_line "$title")"
+
+    if ask_yn "Delete #$id: \"$title_display\"?" "n"; then
+      confirmed_ids+=("$id")
+    else
+      delete_messages+=("$(printf '  Skipped #%s.' "$id")")
+      continue
+    fi
+
+    for dep_file in "$QUEUE_FILE" "$BACKLOG_FILE" "$DONE_FILE"; do
+      [[ ! -f "$dep_file" ]] && continue
+      declare -a dependents=()
+      mapfile -t dependents < <(_jq_text --argjson id "$id" \
+        '.tickets[] | select(.dependencies | map(. == $id) | any) | .id | tostring' "$dep_file")
+      for dep_id in "${dependents[@]+"${dependents[@]}"}"; do
+        dep_prompted["$id:$dep_id"]=1
+        dep_title=$(_jq_text --arg dep_id "$dep_id" '.tickets[] | select(.id | tostring == $dep_id) | .title' "$dep_file")
+        dep_title_display="$(_terminal_safe_line "$dep_title")"
+        if ask_yn "  #$dep_id \"$dep_title_display\" depends on #$id — remove that dependency?" "y"; then
+          dep_remove_confirmed["$id:$dep_id"]=1
+        else
+          delete_messages+=("$(printf '  Warning: #%s still lists deleted ticket #%s as a dependency.' "$dep_id" "$id")")
+        fi
+      done
+    done
+  done
+else
+  confirmed_ids=("${ids[@]}")
+fi
+
+if [[ "${#confirmed_ids[@]}" -eq 0 ]]; then
+  for msg in "${delete_messages[@]+"${delete_messages[@]}"}"; do
+    _outln "$msg"
+  done
+  _outf '\n'
+  if [[ "$failed" == true ]]; then exit 1; fi
+  exit 0
+fi
+
 _state_lock_acquire
 _state_transaction_begin
-for id in "${ids[@]}"; do
+for id in "${confirmed_ids[@]+"${confirmed_ids[@]}"}"; do
   if ! src_file=$(_find_ticket_file "$id" 2>/dev/null); then
     _outf '  Error: ticket #%s not found.\n' "$(_terminal_safe_line "$id")" >&2
     failed=true
     continue
   fi
-  title=$(_jq_text --arg id "$id" '.tickets[] | select(.id | tostring == $id) | .title' "$src_file" 2>/dev/null)
-  title_display="$(_terminal_safe_line "$title")"
-
-  if ! $yes; then
-    ask_yn "Delete #$id: \"$title_display\"?" "n" || { delete_messages+=("$(printf '  Skipped #%s.' "$id")"); continue; }
-  fi
-
   jq_inplace "$src_file" --arg id "$id" 'del(.tickets[] | select(.id | tostring == $id))'
   delete_messages+=("$(printf '  Deleted #%s.' "$id")")
 
-  # Warn about (and offer to remove) any tickets that depend on the deleted ID
   for dep_file in "$QUEUE_FILE" "$BACKLOG_FILE" "$DONE_FILE"; do
     [[ ! -f "$dep_file" ]] && continue
     declare -a dependents=()
     mapfile -t dependents < <(_jq_text --argjson id "$id" \
       '.tickets[] | select(.dependencies | map(. == $id) | any) | .id | tostring' "$(_state_transaction_current_file "$dep_file")")
     for dep_id in "${dependents[@]+"${dependents[@]}"}"; do
-      dep_title=$(_jq_text --arg dep_id "$dep_id" '.tickets[] | select(.id | tostring == $dep_id) | .title' "$(_state_transaction_current_file "$dep_file")")
-      dep_title_display="$(_terminal_safe_line "$dep_title")"
-      if $yes || ask_yn "  #$dep_id \"$dep_title_display\" depends on #$id — remove that dependency?" "y"; then
+      if $yes || [[ -n "${dep_remove_confirmed["$id:$dep_id"]+_}" ]]; then
         jq_inplace "$dep_file" --argjson id "$id" --arg dep_id "$dep_id" \
           '(.tickets[] | select(.id | tostring == $dep_id) | .dependencies) |= map(select(. != $id))'
         delete_messages+=("$(printf '  Removed dependency on #%s from #%s.' "$id" "$dep_id")")
-      else
+      elif [[ -z "${dep_prompted["$id:$dep_id"]+_}" ]]; then
         delete_messages+=("$(printf '  Warning: #%s still lists deleted ticket #%s as a dependency.' "$dep_id" "$id")")
       fi
     done
@@ -87,7 +128,7 @@ for id in "${ids[@]}"; do
 done
 _state_transaction_commit
 for msg in "${delete_messages[@]+"${delete_messages[@]}"}"; do
-  _outf '%s\n' "$msg"
+  _outln "$msg"
 done
 _outf '\n'
 if [[ "$failed" == true ]]; then exit 1; fi

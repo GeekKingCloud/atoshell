@@ -37,8 +37,8 @@ _setup
 [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { _show_help "${BASH_SOURCE[0]}"; exit 0; }
 ticket_id="${1:-}"
 [[ -z "$ticket_id" || "$ticket_id" == -* ]] && { printf 'Error: missing ticket ID.\nUsage: atoshell edit <id> [flags]\n' >&2; exit 1; }
+[[ ! "$ticket_id" =~ ^[0-9]+$ ]] && { printf 'Error: ticket ID must be a number, got "%s".\n' "$(_terminal_safe_line "$ticket_id")" >&2; exit 1; }
 shift
-_state_lock_acquire
 src_file="$(_find_ticket_file "$ticket_id")"
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
@@ -248,29 +248,65 @@ fi
 # ── Pre-flight: validate and warn on removes ──────────────────────────────────
 printf '\n'
 
-# Disciplines: validate names, warn on remove if not present
+# Disciplines: validate names before the write lock; remove presence is checked
+# again under the lock so concurrent edits cannot make this decision stale.
 declare -a resolved_disc_ids=()
 for d in "${disc_ids[@]+"${disc_ids[@]}"}"; do
   rd="$(_resolve_discipline "$d")"
-  if [[ "$disc_action" == "remove" ]]; then
-    present=$(jq -r --arg id "$ticket_id" --arg d "${rd,,}" \
+  resolved_disc_ids+=("$rd")
+done
+
+# Accountable values are normalized before the write lock; remove presence is
+# checked under the lock.
+declare -a resolved_acct_ids=()
+for u in "${acct_ids[@]+"${acct_ids[@]}"}"; do
+  resolved_acct_ids+=("$u")
+done
+
+# Dependencies are type-checked before the write lock; existence and remove
+# presence are checked under the lock.
+declare -a resolved_dep_ids=()
+for dep in "${dep_ids[@]+"${dep_ids[@]}"}"; do
+  if ! [[ "$dep" =~ ^[0-9]+$ ]]; then
+    printf 'Error: dependency "%s" is not a valid ticket ID.\n' "$(_terminal_safe_line "$dep")" >&2
+    exit 1
+  fi
+
+  resolved_dep_ids+=("$dep")
+done
+
+# ── Apply changes ─────────────────────────────────────────────────────────────
+declare -a edit_messages=()
+applied_changes=false
+_edit_record() {
+  local fmt="$1"
+  shift
+  edit_messages+=("$(_terminal_safe_text "$(printf "$fmt" "$@")")")
+  applied_changes=true
+}
+
+_state_lock_acquire
+src_file="$(_find_ticket_file "$ticket_id")"
+
+if [[ "$disc_action" == "remove" && "${#resolved_disc_ids[@]}" -gt 0 ]]; then
+  declare -a present_disc_ids=()
+  for d in "${resolved_disc_ids[@]}"; do
+    present=$(jq -r --arg id "$ticket_id" --arg d "${d,,}" \
       '.tickets[] | select(.id | tostring == $id)
        | .disciplines | map(ascii_downcase) | any(. == $d)' \
       "$src_file" 2>/dev/null || echo "false")
     if [[ "$present" != "true" ]]; then
-      _outf '  [WARN] discipline "%s" not on ticket #%s — skipping.\n' "$rd" "$ticket_id"
+      _outf '  [WARN] discipline "%s" not on ticket #%s — skipping.\n' "$d" "$ticket_id"
     else
-      resolved_disc_ids+=("$rd")
+      present_disc_ids+=("$d")
     fi
-  else
-    resolved_disc_ids+=("$rd")
-  fi
-done
+  done
+  resolved_disc_ids=("${present_disc_ids[@]+"${present_disc_ids[@]}"}")
+fi
 
-# Accountable: warn on remove if not present
-declare -a resolved_acct_ids=()
-for u in "${acct_ids[@]+"${acct_ids[@]}"}"; do
-  if [[ "$acct_action" == "remove" ]]; then
+if [[ "$acct_action" == "remove" && "${#resolved_acct_ids[@]}" -gt 0 ]]; then
+  declare -a present_acct_ids=()
+  for u in "${resolved_acct_ids[@]}"; do
     present=$(jq -r --arg id "$ticket_id" --arg u "${u,,}" \
       '.tickets[] | select(.id | tostring == $id)
        | .accountable | map(ascii_downcase) | any(. == $u)' \
@@ -278,33 +314,16 @@ for u in "${acct_ids[@]+"${acct_ids[@]}"}"; do
     if [[ "$present" != "true" ]]; then
       _outf '  [WARN] accountable "%s" not on ticket #%s — skipping.\n' "$(_terminal_safe_line "$u")" "$ticket_id"
     else
-      resolved_acct_ids+=("$u")
+      present_acct_ids+=("$u")
     fi
-  else
-    resolved_acct_ids+=("$u")
-  fi
-done
-
-# Dependencies: warn on remove if not present
-declare -a resolved_dep_ids=()
-for dep in "${dep_ids[@]+"${dep_ids[@]}"}"; do
-  if [[ "$dep_action" == "remove" ]]; then
-    present=$(jq -r --arg id "$ticket_id" --argjson dep "${dep}" \
-      '.tickets[] | select(.id | tostring == $id)
-       | .dependencies | any(. == $dep)' \
-      "$src_file" 2>/dev/null || echo "false")
-    if [[ "$present" != "true" ]]; then
-      _outf '  [WARN] dependency #%s not on ticket #%s — skipping.\n' "$dep" "$ticket_id"
-    else
-      resolved_dep_ids+=("$dep")
-    fi
-  else
-    _find_ticket_file "$dep" > /dev/null
-    resolved_dep_ids+=("$dep")
-  fi
-done
+  done
+  resolved_acct_ids=("${present_acct_ids[@]+"${present_acct_ids[@]}"}")
+fi
 
 if [[ "$dep_action" == "add" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
+  for dep in "${resolved_dep_ids[@]}"; do
+    _find_ticket_file "$dep" > /dev/null
+  done
   mapfile -t existing_dep_ids < <(jq -r --arg id "$ticket_id" \
     '.tickets[] | select(.id | tostring == $id) | .dependencies[]? | tostring' "$src_file")
   combined_dep_ids=("${existing_dep_ids[@]+"${existing_dep_ids[@]}"}" "${resolved_dep_ids[@]}")
@@ -314,13 +333,21 @@ if [[ "$dep_action" == "add" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
   fi
 fi
 
-# ── Apply changes ─────────────────────────────────────────────────────────────
-declare -a edit_messages=()
-_edit_record() {
-  local fmt="$1"
-  shift
-  edit_messages+=("$(_terminal_safe_text "$(printf "$fmt" "$@")")")
-}
+if [[ "$dep_action" == "remove" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
+  declare -a present_dep_ids=()
+  for dep in "${resolved_dep_ids[@]}"; do
+    present=$(jq -r --arg id "$ticket_id" --argjson dep "${dep}" \
+      '.tickets[] | select(.id | tostring == $id)
+       | .dependencies | any(. == $dep)' \
+      "$src_file" 2>/dev/null || echo "false")
+    if [[ "$present" != "true" ]]; then
+      _outf '  [WARN] dependency #%s not on ticket #%s — skipping.\n' "$dep" "$ticket_id"
+    else
+      present_dep_ids+=("$dep")
+    fi
+  done
+  resolved_dep_ids=("${present_dep_ids[@]+"${present_dep_ids[@]}"}")
+fi
 
 _state_transaction_begin
 # Title
@@ -427,13 +454,15 @@ elif [[ "$dep_action" == "add" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
   _edit_record '  [OK] dependencies added: #%s' "$(IFS=', #'; echo "${resolved_dep_ids[*]}")"
 fi
 
-# ── Stamp audit fields ────────────────────────────────────────────────────────
-jq_inplace "$src_file" --arg id "$ticket_id" --arg by "$actor" \
-  --arg ts "$(_timestamp)" \
-  '(.tickets[] | select(.id | tostring == $id)) |= . + {updated_by: $by, updated_at: $ts}'
+if $applied_changes; then
+  # ── Stamp audit fields ──────────────────────────────────────────────────────
+  jq_inplace "$src_file" --arg id "$ticket_id" --arg by "$actor" \
+    --arg ts "$(_timestamp)" \
+    '(.tickets[] | select(.id | tostring == $id)) |= . + {updated_by: $by, updated_at: $ts}'
+fi
 _state_transaction_commit
 
 for msg in "${edit_messages[@]+"${edit_messages[@]}"}"; do
-  _outf '%s\n' "$msg"
+  _outln "$msg"
 done
 _outf '\n'

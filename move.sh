@@ -147,6 +147,6 @@ for ticket_id in "${ids[@]}"; do
 done
 _state_transaction_commit
 for msg in "${move_messages[@]+"${move_messages[@]}"}"; do
-  _outf '%s\n' "$msg"
+  _outln "$msg"
 done
 _outf '\n'

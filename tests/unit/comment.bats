@@ -114,6 +114,8 @@ load '../helpers/setup'
 @test "comment add: no text without TTY exits 1" {
   run atoshell comment 1
   [ "$status" -eq 1 ]
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
 }
 
 # ── 3. Delete — basic ─────────────────────────────────────────────────────────
@@ -200,6 +202,8 @@ load '../helpers/setup'
   atoshell comment 1 "original text"
   run atoshell comment 1 edit 1
   [ "$status" -eq 1 ]
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
 }
 
 # ── 7. Output content ─────────────────────────────────────────────────────────

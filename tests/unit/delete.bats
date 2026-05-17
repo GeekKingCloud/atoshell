@@ -141,6 +141,12 @@ load '../helpers/setup'
   run atoshell delete 999 --yes
   [ "$status" -ne 0 ]
 }
+@test "delete: confirmation prompt failure leaves no lock or transaction" {
+  run atoshell delete 1
+  [ "$status" -eq 1 ]
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
+}
 @test "delete: multi-delete continues past missing ticket and deletes found ones" {
   run atoshell delete 999,1 --yes
   count=$(jq '[.tickets[] | select(.id == 1)] | length' .atoshell/queue.json)
@@ -167,6 +173,50 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   deps=$(jq '[.tickets[] | select(.id==3) | .dependencies[]] | length' .atoshell/queue.json)
   [ "$deps" -eq 0 ]
+}
+@test "delete: --yes rechecks newly added dependent under lock" {
+  real_mkdir="$(command -v mkdir)"
+  real_jq="$(command -v jq)"
+  marker="$BATS_TEST_TMPDIR/injected-dependent"
+
+  cat > "$BATS_TEST_TMPDIR/bin/mkdir" <<EOF
+#!/usr/bin/env bash
+if [[ " \$* " == *".atoshell/.lock"* && ! -e "$marker" ]]; then
+  touch "$marker"
+  tmp="$TEST_PROJECT/.atoshell/queue.json.tmp"
+  "$real_jq" '.tickets += [{
+    "id": 6,
+    "uuid": "race-dependent",
+    "title": "Race dependent",
+    "description": "Added while delete is acquiring the state lock",
+    "status": "Ready",
+    "priority": "P2",
+    "size": "S",
+    "type": "Task",
+    "disciplines": [],
+    "accountable": [],
+    "dependencies": [1],
+    "comments": [],
+    "created_by": "testuser",
+    "created_at": "2026-01-06T00:00:00Z"
+  }]' "$TEST_PROJECT/.atoshell/queue.json" > "\$tmp" && mv "\$tmp" "$TEST_PROJECT/.atoshell/queue.json"
+fi
+exec "$real_mkdir" "\$@"
+EOF
+  chmod +x "$BATS_TEST_TMPDIR/bin/mkdir"
+
+  run atoshell delete 1 --yes
+  [ "$status" -eq 0 ]
+
+  deleted=$(jq '[.tickets[] | select(.id==1)] | length' .atoshell/queue.json)
+  [ "$deleted" -eq 0 ]
+  present=$(jq '[.tickets[] | select(.id==6)] | length' .atoshell/queue.json)
+  [ "$present" -eq 1 ]
+  still_depends=$(jq '.tickets[] | select(.id==6) | .dependencies | any(. == 1)' .atoshell/queue.json)
+  [ "$still_depends" = "false" ]
+  [[ "$output" == *"Removed dependency on #1 from #6"* ]]
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
 }
 @test "delete: no dependency warning when ticket has no dependents" {
   run atoshell delete 2 --yes

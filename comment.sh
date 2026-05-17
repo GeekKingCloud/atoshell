@@ -66,7 +66,6 @@ if [[ -n "$as" && "$action" != "add" ]]; then
   exit 1
 fi
 
-_state_lock_acquire
 src_file=$(_find_ticket_file "$id")
 
 # ── Delete ────────────────────────────────────────────────────────────────────
@@ -74,6 +73,13 @@ if [[ "$action" == "delete" ]]; then
   idx=$(( comment_id - 1 ))
   cmt_count=$(jq --arg id "$id" '.tickets[] | select(.id | tostring == $id) | .comments | length' "$src_file")
 
+  if [[ "$idx" -lt 0 || "$idx" -ge "$cmt_count" ]]; then
+    printf 'Error: comment #%s does not exist on ticket #%s.\n' "$(_terminal_safe_line "$comment_id")" "$(_terminal_safe_line "$id")" >&2; exit 1
+  fi
+
+  _state_lock_acquire
+  src_file=$(_find_ticket_file "$id")
+  cmt_count=$(jq --arg id "$id" '.tickets[] | select(.id | tostring == $id) | .comments | length' "$src_file")
   if [[ "$idx" -lt 0 || "$idx" -ge "$cmt_count" ]]; then
     printf 'Error: comment #%s does not exist on ticket #%s.\n' "$(_terminal_safe_line "$comment_id")" "$(_terminal_safe_line "$id")" >&2; exit 1
   fi
@@ -109,6 +115,13 @@ if [[ "$action" == "update" ]]; then
   fi
 
   text="$(_sanitize_text "$text")"
+  _state_lock_acquire
+  src_file=$(_find_ticket_file "$id")
+  cmt_count=$(jq --arg id "$id" '.tickets[] | select(.id | tostring == $id) | .comments | length' "$src_file")
+  if [[ "$idx" -lt 0 || "$idx" -ge "$cmt_count" ]]; then
+    printf 'Error: comment #%s does not exist on ticket #%s.\n' "$(_terminal_safe_line "$comment_id")" "$(_terminal_safe_line "$id")" >&2; exit 1
+  fi
+
   _state_transaction_begin
   jq_inplace "$src_file" \
     --arg     id   "$id" \
@@ -131,6 +144,8 @@ fi
 
 text="$(_sanitize_text "$text")"
 author="$(_resolve_actor "$as")"
+_state_lock_acquire
+src_file=$(_find_ticket_file "$id")
 _state_transaction_begin
 jq_inplace "$src_file" \
   --arg id     "$id" \

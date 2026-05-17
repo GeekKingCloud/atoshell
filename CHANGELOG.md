@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.1.1]
+
+### Fixed
+
+- Shortened `edit`, `comment`, and `delete` write-lock windows so interactive
+  prompts no longer hold the shared state lock.
+- Revalidated mutable ticket, comment, dependency, discipline, and accountable
+  state under lock before committing edits or deletes.
+- Fixed invalid dependency removals such as `edit --dependencies remove abc` so
+  they fail validation instead of silently succeeding as no-ops.
+- Avoided stamping edit audit fields when a valid remove operation only emits
+  warnings and makes no ticket changes.
+- Kept `delete --yes` dependency cleanup correct when dependents appear between
+  preflight and lock acquisition.
+
+### Changed
+
+- Split bulk import planning and validation helpers out of `add.sh` into
+  `funcs/add_import.sh`.
+- Added `_outln` for literal line output and moved pre-rendered/user-controlled
+  command messages away from formatted `_outf` calls.
+
+### Tests
+
+- Added regression coverage for prompt-failure lock cleanup, edit remove
+  revalidation, delete dependency cleanup under lock, install fast-forward
+  updates, and literal `_outln` output.
+- Verified the full Bats suite: 1,035 tests passing.
+
 ## [2.1.0]
 
 ### Changed
