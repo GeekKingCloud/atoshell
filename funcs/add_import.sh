@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Bulk import planning and validation helpers for add.sh.
 
+# ── Import planning ──────────────────────────────────────────────────────────
 # Build the import plan for a batch.
 # proposed_id is the newly assigned ticket ID in this system.
 # ref_id is the ID other imported tickets may use to point at this item:
@@ -27,6 +28,7 @@ _build_import_plan() {
     '
 }
 
+# ── Batch dependency validation ──────────────────────────────────────────────
 # Return the set of newly assigned batch ticket IDs that participate in a cycle.
 # Only dependencies that point at other tickets in the same batch are relevant
 # here, because external tickets cannot point forward into newly allocated IDs.
@@ -66,6 +68,7 @@ _batch_cycle_ids() {
     '
 }
 
+# ── Import field access ──────────────────────────────────────────────────────
 _import_field_value() {
   local item="$1" field="$2"
   printf '%s' "$item" | _jq_text --arg field "$field" \
@@ -78,6 +81,7 @@ _import_field_present() {
     'has($field) and .[$field] != null' >/dev/null
 }
 
+# ── Import field validation ──────────────────────────────────────────────────
 _import_value_matches_known() {
   local value="$1" numeric_pattern="$2"
   shift 2

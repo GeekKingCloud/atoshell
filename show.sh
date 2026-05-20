@@ -9,12 +9,12 @@
 # Aliases: yomu, read
 #
 # Options (Output):
-#   --details        Show created/edited timestamps for ticket and comments (id view)
-#   --done           Include Done and show all tickets per column (board view)
-#   --all            Include Done and show all tickets per column (board view)
-#   --full|-f        Wrap board cells; continued lines are indented and end with "-"
-#   --json|-j        Output ticket as JSON (agent-friendly)
-#   --help|-h        Show 'show' usage help and exit
+#   --details  Show created/edited timestamps for ticket and comments (id view)
+#   --done     Include Done and show all tickets per column (board view)
+#   --all      Include Done and show all tickets per column (board view)
+#   --full|-f  Wrap board cells; continued lines are indented and end with "-"
+#   --json|-j  Output ticket as JSON (agent-friendly)
+#   --help|-h  Show 'show' usage help and exit
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 set -euo pipefail

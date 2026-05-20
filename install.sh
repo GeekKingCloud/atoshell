@@ -23,7 +23,7 @@
 set -euo pipefail
 
 REPO="https://github.com/GeekKingCloud/atoshell.git"
-INSTALL_DIR="$HOME/.atoshell"
+INSTALL_DIR="$HOME/atoshell"
 BIN_DIR="$HOME/.local/bin"
 
 require_modern_bash() {

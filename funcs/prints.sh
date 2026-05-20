@@ -72,9 +72,9 @@ _print_ticket() {
 # ── Board rendering ───────────────────────────────────────────────────────────
 # Render the kanban board.
 # Usage: _print_board [done] [all] [full_titles]
-#   done        — add a 4th "Done" column (suppresses the Done footer)
-#   all         — show all tickets per column (bypasses default limit of 5)
-#   full_titles — wrap full ticket titles across multiple board lines
+#   done         — add a 4th "Done" column (suppresses the Done footer)
+#   all          — show all tickets per column (bypasses default limit of 5)
+#   full_titles  — wrap full ticket titles across multiple board lines
 # Reads config vars and file paths from caller scope via _load_config.
 _print_board() {
   local done="${1:-}" all="${2:-}" full_titles="${3:-false}"

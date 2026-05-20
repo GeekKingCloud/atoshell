@@ -23,13 +23,13 @@ If a change affects command names, aliases, help text, wrapper behavior, install
 
 Installer behavior:
 
-- `install.sh` installs Atoshell from its canonical repository into `~/.atoshell` by default.
+- `install.sh` installs Atoshell from its canonical repository into `~/atoshell` by default.
 - The installed command names are `atoshell` and `ato`; do not add alternate branded command names.
 - On Windows/Git Bash, the installer also writes `atoshell.cmd` and `ato.cmd` beside the shell launchers so PowerShell and `cmd.exe` resolve the installed commands.
 - Atoshell requires Bash 4.3 or newer. On macOS, do not rely on the stock `/bin/bash`; install modern Bash with Homebrew and put it before `/bin` in `PATH`.
 - `atoshell update` uses `git pull --ff-only` for git-based installs. If the install is not a git checkout, it prints the manual reinstall command and does not execute a remote installer fallback.
 - Do not add repo-source overrides or project-local paths for testing local checkouts.
-- Do not create coding-agent-owned scratch or capture folders such as `codex-logs`, `.codex`, `agent-logs`, or `scratch` inside `.reef/`, `.lumberhack/`, `.atoshell/`, generated runtime folders, or worker worktrees. Tool-owned runtime logs remain in their documented tool paths. Put disposable agent captures under `$env:TEMP\codex\...` and durable agent scratch under `C:\Users\thete\.codex\scratch\...`.
+- Do not create coding-agent-owned scratch or capture folders such as `codex-logs`, `.codex`, `agent-logs`, or `scratch` inside `.g8ldfish/`, `.lumber-hack/`, `.atoshell/`, generated runtime folders, or worker worktrees. Tool-owned runtime logs remain in their documented tool paths. Put disposable agent captures under `$env:TEMP\codex\...` and durable agent scratch under `C:\Users\thete\.codex\scratch\...`.
 
 ## Repo Workflow For Agents
 
@@ -38,7 +38,7 @@ Prefer this loop when working inside the atoshell repo:
 ```bash
 bash atoshell.sh help
 bash bin/atoshell help
-bats tests/unit/<file>.bats          # Unix
+bats tests/unit/<file>.bats                                # Unix
 bats.cmd --print-output-on-failure tests/unit/<file>.bats  # Windows
 ```
 
@@ -227,7 +227,7 @@ Nested `VALIDATION_FAILED.errors[].type` values include:
 - Prefer `--json` for reads in tests and automation; do not parse decorative human output when a structured path exists.
 - Keep machine-readable errors on stderr and leave stdout clean on failure.
 - When changing ticket schema, status rules, import validation, or structured errors, update this file and the relevant unit tests in the same change.
-- Do not add runtime dependencies on Reef, Lumberhack, Octopush, Goldfish, or external planning tools.
+- Do not add runtime dependencies on sibling orchestration tools or external planning tools.
 
 ---
 
@@ -316,9 +316,9 @@ Review and PR state are external workflow context, not persisted ticket statuses
 An orchestrator can distribute work to numbered sub-agents using `--as`:
 
 ```bash
-atoshell take next --as agent-1 --json   # claim highest-priority ticket for agent-1
-atoshell take next --as agent-2 --json   # claim next ticket for agent-2
-atoshell take 42   --as agent-3 --json   # assign a specific ticket to agent-3
+atoshell take next --as agent-1 --json  # claim highest-priority ticket for agent-1
+atoshell take next --as agent-2 --json  # claim next ticket for agent-2
+atoshell take 42   --as agent-3 --json  # assign a specific ticket to agent-3
 ```
 
 Sub-agents then filter their own queue with `--accountable`:

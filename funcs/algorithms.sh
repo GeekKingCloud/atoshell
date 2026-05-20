@@ -5,11 +5,11 @@
 #   source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/funcs/algorithms.sh"
 #
 # Provided functions:
-#   _check_cyclic_deps    Detect cycles in the dependency graph (Kahn's algorithm).
-#   _rank_ready_tickets   Rank Ready tickets using Kahn's cycle detection,
-#                           BFS budget promotion, and priority topo-sort.
+#   _check_cyclic_deps   Detect cycles in the dependency graph (Kahn's algorithm).
+#   _rank_ready_tickets  Rank Ready tickets using Kahn's cycle detection,
+#                          BFS budget promotion, and priority topo-sort.
 
-# ── _check_cyclic_deps ────────────────────────────────────────────────────────
+# ── Cycle detection ───────────────────────────────────────────────────────────
 # _check_cyclic_deps <ticket_id> [dep_id...]
 # Returns 0 if no cycle, 1 if a cycle is detected in the dependency graph.
 # Loads all tickets from all three files to build the full graph.
@@ -62,16 +62,16 @@ _check_cyclic_deps() {
   [[ "$result" == "ok" ]]
 }
 
-# ── _rank_ready_tickets ───────────────────────────────────────────────────────
+# ── Ready-ticket ranking ──────────────────────────────────────────────────────
 # Inputs (reads from env, set by _setup or _setup_readonly):
 #   $QUEUE_FILE, $DONE_FILE
 #   $STATUS_READY
 #   $UNBLOCK_P0_BUDGET, $UNBLOCK_P1_BUDGET
 #
 # Outputs (via declare -g):
-#   ranked_ready_json   — ordered array of all Ready tickets; tickets beyond
-#                         topo_count annotated with _block_reason: "blocked"|"cycle"
-#   topo_count          — index boundary: [0:topo_count] are actionable, rest blocked/cyclic
+#   ranked_ready_json  — ordered array of all Ready tickets; tickets beyond
+#                          topo_count annotated with _block_reason: "blocked"|"cycle"
+#   topo_count         — index boundary: [0:topo_count] are actionable, rest blocked/cyclic
 _rank_ready_tickets() {
   # Build the set of "satisfied" dep IDs — deps that don't need to be waited on.
   # Includes only done tickets.
@@ -95,10 +95,10 @@ _rank_ready_tickets() {
 
   # Annotate each Ready ticket with numeric sort keys and split its deps into
   # two buckets:
-  #   deps_ready    — unsatisfied deps that are also in the Ready list
-  #                   (these create ordering constraints between ready tickets)
-  #   deps_external — unsatisfied deps NOT in the Ready list
-  #                   (these externally block the ticket entirely)
+  #   deps_ready     — unsatisfied deps that are also in the Ready list
+  #                      (these create ordering constraints between ready tickets)
+  #   deps_external  — unsatisfied deps NOT in the Ready list
+  #                      (these externally block the ticket entirely)
   # `priority` is the string label ("P2") kept for output; `pri` is the
   # numeric rank (0-3) used for integer comparisons in bash.
   local _ticket_rows
@@ -211,7 +211,8 @@ _rank_ready_tickets() {
     for _dep in ${_ticket_deps_ready["$_start"]:-}; do
       [[ -z "${_eff_pri[$_dep]+_}" ]] && continue
       [[ "${_is_cyclic[$_dep]:-}" == "true" ]] && continue
-      _bfs_q+=("$_dep"); _bfs_visited+=("$_dep")
+      _bfs_q+=("$_dep")
+      _bfs_visited+=("$_dep")
       _bfs_seen["$_dep"]=true
     done
     local _bfs_head=0
@@ -223,7 +224,8 @@ _rank_ready_tickets() {
         [[ "${_is_cyclic[$_dep]:-}" == "true" ]] && continue
         [[ -n "${_bfs_seen[$_dep]+_}" ]] && continue
         _bfs_seen["$_dep"]=true
-        _bfs_visited+=("$_dep"); _bfs_q+=("$_dep")
+        _bfs_visited+=("$_dep")
+        _bfs_q+=("$_dep")
       done
     done
     (( ${#_bfs_visited[@]} > 0 )) && printf '%s\n' "${_bfs_visited[@]}"
@@ -321,7 +323,9 @@ _rank_ready_tickets() {
       fi
     done
     _new_avail=()
-    for _tid in "${_available[@]}"; do [[ "$_tid" != "$_best" ]] && _new_avail+=("$_tid"); done
+    for _tid in "${_available[@]}"; do
+      [[ "$_tid" != "$_best" ]] && _new_avail+=("$_tid")
+    done
     _available=("${_new_avail[@]+"${_new_avail[@]}"}")
     _output_ids+=("$_best")
     _output_set["$_best"]=true

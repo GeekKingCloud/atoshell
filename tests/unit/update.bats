@@ -56,7 +56,7 @@ EOF
   export PATH="$BATS_TEST_TMPDIR/bin:$BATS_TEST_TMPDIR/git_bin:$PATH"
 
   export HOME="$BATS_TEST_TMPDIR/home"
-  export INSTALL_DIR="$HOME/.atoshell"
+  export INSTALL_DIR="$HOME/atoshell"
   mkdir -p "$INSTALL_DIR"
 
   # Fixture project for Phase 2 tests
@@ -354,10 +354,6 @@ _minimal_update_path() {
 # ── 10. Command aliases ───────────────────────────────────────────────────────
 @test "update: noru alias works" {
   run atoshell noru
-  [ "$status" -eq 0 ]
-}
-@test "update: migrate alias works" {
-  run atoshell migrate
   [ "$status" -eq 0 ]
 }
 @test "update: patch alias works" {

@@ -376,6 +376,7 @@ _sync_config_vars() {
 
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
+    [[ "$line" =~ ^[A-Z0-9_]+= ]] || continue
 
     key="${line%%=*}"
     [[ -z "$key" ]] && continue

@@ -60,7 +60,7 @@ EOF
   export PATH="$BATS_TEST_TMPDIR/bin:$BATS_TEST_TMPDIR/git_bin:$PATH"
 
   export HOME="$BATS_TEST_TMPDIR/home"
-  export INSTALL_DIR="$HOME/.atoshell"
+  export INSTALL_DIR="$HOME/atoshell"
   export BIN_DIR="$HOME/.local/bin"
   mkdir -p "$HOME"
 
@@ -166,7 +166,7 @@ _tools_dir() {
 }
 @test "install: generated launchers quote special home paths" {
   export HOME="$BATS_TEST_TMPDIR/home with spaces % and 'quote"
-  export INSTALL_DIR="$HOME/.atoshell"
+  export INSTALL_DIR="$HOME/atoshell"
   export BIN_DIR="$HOME/.local/bin"
   mkdir -p "$HOME"
 

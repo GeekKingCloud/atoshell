@@ -20,7 +20,7 @@ setup() {
   export PATH="$BATS_TEST_TMPDIR/bin:$PATH"
 
   export HOME="$BATS_TEST_TMPDIR/home"
-  export INSTALL_DIR="$HOME/.atoshell"
+  export INSTALL_DIR="$HOME/atoshell"
   export BIN_DIR="$HOME/.local/bin"
   mkdir -p "$BIN_DIR"
 }
@@ -138,10 +138,6 @@ setup() {
 # ── 5. Command aliases ────────────────────────────────────────────────────────
 @test "uninstall: nuku alias works" {
   run atoshell nuku
-  [ "$status" -eq 0 ]
-}
-@test "uninstall: flush alias works" {
-  run atoshell flush
   [ "$status" -eq 0 ]
 }
 @test "uninstall: purge alias works" {

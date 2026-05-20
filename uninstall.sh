@@ -4,14 +4,14 @@
 # Usage:
 #   atoshell uninstall
 #
-# Aliases: nuku, flush, purge
+# Aliases: nuku, purge
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/funcs/helpers.sh"
 
-INSTALL_DIR="$HOME/.atoshell"
+INSTALL_DIR="$HOME/atoshell"
 BIN_DIR="$HOME/.local/bin"
 
 while [[ $# -gt 0 ]]; do

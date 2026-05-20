@@ -4,10 +4,10 @@
 # Usage:
 #   atoshell update [options]
 #
-# Aliases: noru, migrate, patch
+# Aliases: noru, patch
 #
 # Options:
-#   --walk  Search parent directories for a project to update (default: current dir only)
+#   --walk     Search parent directories for a project to update (default: current dir only)
 #   --help|-h  Show 'update' usage help and exit
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ case "$SCRIPT_SOURCE" in
 esac
 source "$(cd "$SCRIPT_DIR" && pwd)/funcs/helpers.sh"
 
-INSTALL_DIR="$HOME/.atoshell"
+INSTALL_DIR="$HOME/atoshell"
 INSTALLER_URL="https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh"
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
