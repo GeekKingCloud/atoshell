@@ -356,10 +356,6 @@ _minimal_update_path() {
   run atoshell noru
   [ "$status" -eq 0 ]
 }
-@test "update: migrate alias works" {
-  run atoshell migrate
-  [ "$status" -eq 0 ]
-}
 @test "update: patch alias works" {
   run atoshell patch
   [ "$status" -eq 0 ]

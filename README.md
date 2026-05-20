@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/logo.svg" alt="atoshell" width="400">
+  <img src=".assets/logo.svg" alt="atoshell" width="400">
 </p>
 
 A lightweight, curl-installable, agentic-first terminal ticket tracker. Manage tasks in plain JSON files — no account, no cloud, no setup friction.
@@ -198,7 +198,7 @@ Edit any property of a ticket. Multiple flags can be combined in a single comman
 
 ```bash
 atoshell edit 7 --title "Revised title"
-atoshell edit 7 --description change      # opens interactive multi-line prompt
+atoshell edit 7 --description change                                     # opens interactive multi-line prompt
 atoshell edit 7 --type Bug --priority P1
 atoshell edit 7 --status "in progress"
 atoshell edit 7 --status done
@@ -262,7 +262,7 @@ atoshell list done                               # shows completed tickets
 atoshell list --mine                             # tickets accountable to you
 atoshell list --accountable lyra
 atoshell list --priority P0,P1
-atoshell list --priority 0,1                    # numeric shorthand: P0,P1
+atoshell list --priority 0,1                     # numeric shorthand: P0,P1
 atoshell list --type Bug --disciplines Backend
 atoshell list backlog --size XS,S --priority P2
 atoshell list --status done                      # filter by status — no scope needed, no quotes needed
@@ -366,12 +366,12 @@ Aliases: `kaku`, `mark`, `note`
 Add, edit, or remove comments on a ticket. Author is set to `$USERNAME` when run interactively, or `[agent]` when stdin is not a TTY (piped input). Use `--as <agent-N|number>` in non-interactive mode when an orchestrator needs the comment attributed to a specific numbered agent.
 
 ```bash
-atoshell comment 5                        # interactive prompt
-atoshell comment 5 "Looks good"           # inline text
+atoshell comment 5                                  # interactive prompt
+atoshell comment 5 "Looks good"                     # inline text
 atoshell comment 5 --as agent-1 "Root cause found"
-atoshell comment 5 edit 2 "Updated text"  # edit comment #2
-atoshell comment 5 edit 2                 # edit comment #2 interactively
-atoshell comment 5 delete 2               # delete comment #2
+atoshell comment 5 edit 2 "Updated text"            # edit comment #2
+atoshell comment 5 edit 2                           # edit comment #2 interactively
+atoshell comment 5 delete 2                         # delete comment #2
 ```
 
 `--as` is only allowed in non-interactive mode and only accepts `agent-N` or a bare positive number. Omit `--as` to use `[agent]`.
@@ -396,7 +396,7 @@ atoshell search "login" --json  # output as JSON array (agent-friendly)
 ---
 
 ### `update`
-Aliases: `noru`, `migrate`, `patch`
+Aliases: `noru`, `patch`
 
 Pull the latest atoshell CLI and sync project files and config. Git-based installs update with `git pull --ff-only`; non-git installs print the manual reinstall command instead of executing a remote installer. Creates any missing `.atoshell/` files and adds new config vars introduced since the last update.
 
@@ -425,7 +425,7 @@ atoshell -v
 ---
 
 ### `uninstall`
-Aliases: `nuku`, `flush`, `purge`
+Aliases: `nuku`, `purge`
 
 Remove atoshell. Your `.atoshell/` project data is never touched.
 
@@ -442,7 +442,7 @@ Each project's `.atoshell/config.env` controls how atoshell behaves for that pro
 Set your name so all tickets and comments are attributed correctly, and so `me` resolves to you when filtering or setting accountable. If `USERNAME` is not set in `config.env`, Atoshell uses `undefined`.
 
 ```bash
-USERNAME="Ian"
+USERNAME="Vincent"
 ```
 
 ### Status names

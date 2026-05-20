@@ -140,10 +140,6 @@ setup() {
   run atoshell nuku
   [ "$status" -eq 0 ]
 }
-@test "uninstall: flush alias works" {
-  run atoshell flush
-  [ "$status" -eq 0 ]
-}
 @test "uninstall: purge alias works" {
   run atoshell purge
   [ "$status" -eq 0 ]

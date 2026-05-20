@@ -38,7 +38,7 @@ Prefer this loop when working inside the atoshell repo:
 ```bash
 bash atoshell.sh help
 bash bin/atoshell help
-bats tests/unit/<file>.bats          # Unix
+bats tests/unit/<file>.bats                                # Unix
 bats.cmd --print-output-on-failure tests/unit/<file>.bats  # Windows
 ```
 
@@ -316,9 +316,9 @@ Review and PR state are external workflow context, not persisted ticket statuses
 An orchestrator can distribute work to numbered sub-agents using `--as`:
 
 ```bash
-atoshell take next --as agent-1 --json   # claim highest-priority ticket for agent-1
-atoshell take next --as agent-2 --json   # claim next ticket for agent-2
-atoshell take 42   --as agent-3 --json   # assign a specific ticket to agent-3
+atoshell take next --as agent-1 --json  # claim highest-priority ticket for agent-1
+atoshell take next --as agent-2 --json  # claim next ticket for agent-2
+atoshell take 42   --as agent-3 --json  # assign a specific ticket to agent-3
 ```
 
 Sub-agents then filter their own queue with `--accountable`:

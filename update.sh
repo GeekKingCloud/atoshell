@@ -4,10 +4,10 @@
 # Usage:
 #   atoshell update [options]
 #
-# Aliases: noru, migrate, patch
+# Aliases: noru, patch
 #
 # Options:
-#   --walk  Search parent directories for a project to update (default: current dir only)
+#   --walk     Search parent directories for a project to update (default: current dir only)
 #   --help|-h  Show 'update' usage help and exit
 
 # ── Setup ─────────────────────────────────────────────────────────────────────

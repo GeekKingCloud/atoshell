@@ -57,8 +57,12 @@ Every command script should:
 ### Module headers
 
 - Shared `funcs/*.sh` files should start with a one-line purpose comment after the shebang.
+- Data-only sourced modules under `funcs/`, such as default-value files, follow the same shebang and purpose-comment rule.
+- Filename-prefixed synopsis headers are acceptable for larger aggregator, rendering, or algorithm modules when the extra prose explains how the module is meant to be sourced.
 - If a file is guarded against re-sourcing, keep the purpose comment above the guard so the file still reads clearly at the top.
 - Aggregator modules should use a banner comment before sourced module blocks.
+- Separate adjacent helper functions with a blank line, and use banner comments to group related helpers in shared modules.
+- A banner may directly introduce code with no blank line; use one blank after the banner only when section-level explanatory comments follow.
 
 Example — simple two-column list:
 
@@ -71,19 +75,19 @@ printf ' 11) uninstall  — Remove atoshell\n'
 Example — multi-column alias list:
 
 ```text
-#   install                                          — Install atoshell on this machine
-#   uninstall  | nuku    | flush    | purge          — Remove atoshell
-#   take       | toru    | snatch   | grab           — Assign yourself to a ticket and move it to In Progress
-#   add        | tasu    | fab      | new    | open  — Create a new ticket
+#   install                                        — Install atoshell on this machine
+#   uninstall  | nuku   | purge                    — Remove atoshell
+#   take       | toru    | snatch  | grab          — Assign yourself to a ticket and move it to In Progress
+#   add        | tasu    | fab     | new   | open  — Create a new ticket
 ```
 
 Example — aligned `case` block:
 
 ```bash
 case "$choice" in
-  0|init|kido|boot)               CMD="init"       ;;
-  1|add|tasu|fab|new|open)        CMD="add"        ;;
-  11|uninstall|nuku|flush|purge)  CMD="uninstall"  ;;
+  0|init|kido|boot)         CMD="init"       ;;
+  1|add|tasu|fab|new|open)  CMD="add"        ;;
+  11|uninstall|nuku|purge)  CMD="uninstall"  ;;
 esac
 ```
 
@@ -130,7 +134,7 @@ done
 - Validate ticket IDs, dependency IDs, and user-provided enums before writing.
 - Sanitize user-entered text that will be rendered back to terminals.
 - Keep file operations scoped to `.atoshell/`.
-- When `jq -r` output is fed back into shell variables, loops, prompts, or equality checks, prefer `_jq_text` so text handling stays stable across Bash environments.
+- When `jq -r` output is fed back into shell variables, loops, prompts, or equality checks, prefer `_jq_text` so text handling stays stable across Bash environments. Keep raw `jq -r` in modules that are intentionally sourceable without `funcs/helpers.sh` or `funcs/terminal.sh`.
 
 ## Portability And Environment
 

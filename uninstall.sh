@@ -4,7 +4,7 @@
 # Usage:
 #   atoshell uninstall
 #
-# Aliases: nuku, flush, purge
+# Aliases: nuku, purge
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 set -euo pipefail

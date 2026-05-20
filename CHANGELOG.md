@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.2]
+
+### Changed
+
+- Added contributor and security guidance for open-source project hygiene.
+- Added social preview source and exported image assets.
+- Normalized shared `funcs/` headers, section banners, and spacing to match the
+  project style guide.
+- Clarified `STYLE.md` guidance for data-only helper modules, section banners,
+  and directly-sourceable modules.
+
+### Fixed
+
+- Kept config synchronization from treating comments or shebang lines in
+  `funcs/config_vars.sh` as project config defaults.
+
 ## [2.1.1]
 
 ### Fixed
