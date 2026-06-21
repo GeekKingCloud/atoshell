@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0]
+
+### Changed
+
+- Added npm-compatible package metadata for Bun/npm global installs.
+- Added package-manager guidance for package-installed update and uninstall paths.
+- Added GitHub release-triggered npm publishing through trusted publishing/OIDC.
+- Switched the README logo to a dark-background asset so it remains legible on npm's light package page.
+
+### Tests
+
+- Added npm/Bun package smoke coverage and grouped Linux, macOS, and Windows smoke checks under an OS smoke matrix.
+- Added package dry-run coverage for the README logo asset.
+
 ## [2.1.2]
 
 ### Changed

@@ -1,13 +1,12 @@
 # Agents
-.codex
+.agents/
+.codex/
 CLAUDE.md
 .claude/
+.grok/
+.opencode/
 
 # Tools
 .lumber-hack/
 .atoshell/
 .g8ldfish/
-.atoshell/*.env
-.atoshell/meta.json
-.atoshell/.lock/
-.atoshell/.transaction/

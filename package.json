@@ -1,0 +1,35 @@
+{
+  "name": "atoshell",
+  "version": "2.2.0",
+  "description": "Agent-first terminal ticket tracking in plain JSON.",
+  "license": "GPL-3.0-only",
+  "homepage": "https://github.com/GeekKingCloud/atoshell#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GeekKingCloud/atoshell.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GeekKingCloud/atoshell/issues"
+  },
+  "bin": {
+    "atoshell": "bin/atoshell.js",
+    "ato": "bin/atoshell.js"
+  },
+  "files": [
+    ".atoshell.example",
+    ".assets",
+    "bin",
+    "funcs",
+    "*.sh",
+    "VERSION",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "cli",
+    "tickets",
+    "agents",
+    "bash",
+    "kanban"
+  ]
+}

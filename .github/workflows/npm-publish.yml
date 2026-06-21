@@ -1,0 +1,83 @@
+name: Publish npm package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Verify package version matches release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          package_version="$(node -p "require('./package.json').version")"
+          version_file="$(tr -d '\r\n' < VERSION)"
+          tag_version="${RELEASE_TAG#v}"
+
+          if [[ "$package_version" != "$tag_version" ]]; then
+            echo "::error::package.json version $package_version does not match release tag $RELEASE_TAG"
+            exit 1
+          fi
+
+          if [[ "$version_file" != "$package_version" ]]; then
+            echo "::error::VERSION $version_file does not match package.json version $package_version"
+            exit 1
+          fi
+
+      - name: Inspect package contents
+        run: |
+          set -euo pipefail
+
+          npm pack --dry-run --json > npm-pack.json
+          node <<'NODE'
+          const fs = require("fs");
+
+          const [pack] = JSON.parse(fs.readFileSync("npm-pack.json", "utf8"));
+          const paths = new Set(pack.files.map((file) => file.path));
+          const required = [
+            "package.json",
+            "atoshell.sh",
+            "bin/atoshell.js",
+            "bin/atoshell",
+            "bin/ato",
+            "funcs/helpers.sh",
+            ".atoshell.example/config.env",
+            ".assets/logo-with-background.svg",
+            "README.md",
+            "LICENSE"
+          ];
+
+          const missing = required.filter((path) => !paths.has(path));
+          if (missing.length) {
+            console.error(`Missing package files: ${missing.join(", ")}`);
+            process.exit(1);
+          }
+
+          const forbidden = [...paths].filter(
+            (path) => path.startsWith("tests/") || path.startsWith(".github/")
+          );
+          if (forbidden.length) {
+            console.error(`Unexpected package files: ${forbidden.join(", ")}`);
+            process.exit(1);
+          }
+          NODE
+
+      - name: Publish
+        run: npm publish --access public

@@ -25,6 +25,14 @@ setup() {
   mkdir -p "$BIN_DIR"
 }
 
+_copy_package_install() {
+  local pkg="$BATS_TEST_TMPDIR/package-install"
+  mkdir -p "$pkg"
+  cp "$ATOSHELL_REPO"/*.sh "$ATOSHELL_REPO"/VERSION "$ATOSHELL_REPO"/package.json "$pkg"/
+  cp -R "$ATOSHELL_REPO"/funcs "$ATOSHELL_REPO"/bin "$ATOSHELL_REPO"/.atoshell.example "$pkg"/
+  printf '%s' "$pkg"
+}
+
 # ── 1. Wrapper removal ────────────────────────────────────────────────────────
 @test "uninstall --help: exits 0 without removing wrappers" {
   touch "$BIN_DIR/atoshell" "$BIN_DIR/ato" "$BIN_DIR/atoshell.cmd" "$BIN_DIR/ato.cmd"
@@ -134,6 +142,26 @@ setup() {
   [ "$status" -eq 0 ]
   [ -d "$INSTALL_DIR" ]
   [[ "$output" == *"KEPT"* ]]
+}
+
+@test "uninstall: package install shows package-manager removal guidance" {
+  local pkg; pkg="$(_copy_package_install)"
+  run bash "$pkg/uninstall.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"package-manager install"* ]]
+  [[ "$output" == *"bun remove -g atoshell"* ]]
+  [[ "$output" == *"npm uninstall -g atoshell"* ]]
+}
+
+@test "uninstall: package install does not remove package-manager-owned shims" {
+  local pkg; pkg="$(_copy_package_install)"
+  touch "$BIN_DIR/atoshell" "$BIN_DIR/ato" "$BIN_DIR/atoshell.cmd" "$BIN_DIR/ato.cmd"
+  run bash "$pkg/uninstall.sh"
+  [ "$status" -eq 0 ]
+  [ -f "$BIN_DIR/atoshell" ]
+  [ -f "$BIN_DIR/ato" ]
+  [ -f "$BIN_DIR/atoshell.cmd" ]
+  [ -f "$BIN_DIR/ato.cmd" ]
 }
 # ── 5. Command aliases ────────────────────────────────────────────────────────
 @test "uninstall: nuku alias works" {

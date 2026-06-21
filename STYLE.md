@@ -16,11 +16,13 @@ This guide is for contributors working on atoshell itself. `README.md` is the us
 ## Source Of Truth
 
 - The shipped CLI surface includes `atoshell.sh`, `bin/atoshell`, `bin/ato`, and `VERSION`.
+- Package distribution metadata lives in `package.json`; keep its `bin` entries and version aligned with the shipped wrappers and `VERSION`.
 - Keep command names, aliases, help text, and version output aligned across:
   - `atoshell.sh`
   - `bin/atoshell`
   - `bin/ato`
   - command file headers
+  - `package.json`
   - `README.md`
   - `AGENTS.md`
   - `tests/README.md`
@@ -38,11 +40,14 @@ Every command script should:
 4. Call `_setup` before writing project state, or `_setup_readonly` for read-only commands. Read-only setup must stay lock-free on the normal path, but must recover any visible lock or transaction journal before reading.
 5. Use banner comments for major sections.
 6. Keep the file header in this order: title line, `Usage:`, optional `Aliases:`, then examples/options blocks when needed.
+7. Keep command files in narrative order: setup, initial parsed-state variables, flag parsing, validation/pre-flight checks, helper functions local to the command, the main read/write operation, then JSON/human output.
+8. Keep dispatchers in narrative order: setup, helper functions, global-flag stripping, command normalization, help/version/menu branches, then final `exec` dispatch.
 
 ### Layout and alignment
 
 - Treat aligned text as part of the house style, not incidental formatting.
 - Treat any visually aligned block as adjacent vertical lists, not one padded left blob.
+- Use the `# ── Section ─────` banner form for shell section dividers in tracked scripts and tests. Do not mix it with older `# -- Section ---` dividers inside the same project.
 - In shell `case` arms, help listings, `printf` command menus, comment headers, flag groups, and other columnar blocks, start the next column exactly 2 spaces after the longest item in the previous column.
 - In `|`-separated command or alias blocks, each alias position is its own vertical column. The `— description` column is just the final column in that sequence.
 - In one contiguous block, shorter rows must preserve the width of later empty columns so the final description column still aligns with rows that have more aliases.
@@ -53,6 +58,7 @@ Every command script should:
 - Apply the same scan-friendly alignment to Markdown tables in `README.md`, `AGENTS.md`, and `tests/README.md`.
 - Human-facing command lists use aligned columns plus an em dash before the description.
 - Runtime framing should prefer ASCII boxes that match actual CLI output.
+- In generated or example `config.env` files, align inline comments 2 spaces after the longest assignment in that contiguous block. Keep section banners and explanatory comments in the same order as the generated template.
 
 ### Module headers
 
@@ -63,6 +69,7 @@ Every command script should:
 - Aggregator modules should use a banner comment before sourced module blocks.
 - Separate adjacent helper functions with a blank line, and use banner comments to group related helpers in shared modules.
 - A banner may directly introduce code with no blank line; use one blank after the banner only when section-level explanatory comments follow.
+- Keep reusable helper modules organized from bootstrap/configuration toward increasingly specific behavior, and put command-local helper functions below parsing/pre-flight unless they are needed to parse arguments safely.
 
 Example — simple two-column list:
 

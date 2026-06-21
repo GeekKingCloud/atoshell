@@ -125,6 +125,14 @@ _tools_dir() {
   printf '%s' "$dir"
 }
 
+_copy_package_install() {
+  local pkg="$BATS_TEST_TMPDIR/package-install"
+  mkdir -p "$pkg"
+  cp "$ATOSHELL_REPO"/*.sh "$ATOSHELL_REPO"/VERSION "$ATOSHELL_REPO"/package.json "$pkg"/
+  cp -R "$ATOSHELL_REPO"/funcs "$ATOSHELL_REPO"/bin "$ATOSHELL_REPO"/.atoshell.example "$pkg"/
+  printf '%s' "$pkg"
+}
+
 # ── 1. Fresh install ──────────────────────────────────────────────────────────
 @test "install: exit code 0 on fresh install" {
   run atoshell install
@@ -281,6 +289,27 @@ EOF
     "$bash_path" "$ATOSHELL_REPO/install.sh" 2>&1
   [ "$status" -eq 0 ]
   [ -f "$BIN_DIR/atoshell" ]
+}
+
+@test "install: package install prints package-manager guidance" {
+  local pkg; pkg="$(_copy_package_install)"
+  run bash "$pkg/install.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"package-manager install"* ]]
+  [[ "$output" == *"bun update -g atoshell"* ]]
+  [[ "$output" == *"npm update -g atoshell"* ]]
+  [[ "$output" == *"bun install -g atoshell"* ]]
+  [[ "$output" == *"npm install -g atoshell"* ]]
+}
+
+@test "install: package install does not clone or write legacy wrappers" {
+  local pkg; pkg="$(_copy_package_install)"
+  rm -f "$BATS_TEST_TMPDIR/git_calls.log"
+  run bash "$pkg/install.sh"
+  [ "$status" -eq 0 ]
+  [ ! -e "$BATS_TEST_TMPDIR/git_calls.log" ]
+  [ ! -e "$INSTALL_DIR" ]
+  [ ! -e "$BIN_DIR/atoshell" ]
 }
 
 # ── 5. Existing directories and wrapper overwrite ─────────────────────────────

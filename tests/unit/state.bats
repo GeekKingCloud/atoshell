@@ -10,6 +10,26 @@ _ticket_file_count() {
     "$TEST_PROJECT/.atoshell/done.json"
 }
 
+_cleanup_test_process() {
+  local pid="${1:-}"
+  [[ -n "$pid" ]] || return 0
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+
+_register_test_process() {
+  local pid="$1"
+  ATOSHELL_TEST_PROCESS_PIDS="${ATOSHELL_TEST_PROCESS_PIDS:-} $pid"
+}
+
+teardown() {
+  local pid
+  for pid in ${ATOSHELL_TEST_PROCESS_PIDS:-}; do
+    _cleanup_test_process "$pid"
+  done
+  ATOSHELL_TEST_PROCESS_PIDS=""
+}
+
 @test "state lock: acquire and release use project lock directory" {
   load_atoshell_helpers
 
@@ -53,6 +73,7 @@ _ticket_file_count() {
   load_atoshell_helpers
   sleep 60 &
   local owner_pid="$!"
+  _register_test_process "$owner_pid"
   mkdir -p "$TEST_PROJECT/.atoshell/.lock"
   printf 'pid=%s\ncreated_at_epoch=%s\ncommand=sleep\ncwd=%s\n' "$owner_pid" "$(( $(date +%s) - 301 ))" "$TEST_PROJECT" \
     > "$TEST_PROJECT/.atoshell/.lock/meta"
@@ -62,18 +83,16 @@ _ticket_file_count() {
   [ -d "$TEST_PROJECT/.atoshell/.lock" ]
   grep -q "pid=$owner_pid" "$TEST_PROJECT/.atoshell/.lock/meta"
   rm -rf "$TEST_PROJECT/.atoshell/.lock"
-  kill "$owner_pid" 2>/dev/null || true
-  wait "$owner_pid" 2>/dev/null || true
+  _cleanup_test_process "$owner_pid"
 }
 
 @test "state lock: old lock with reused-looking unrelated PID is recovered" {
   load_atoshell_helpers
   sleep 60 &
   local owner_pid="$!" owner_args
+  _register_test_process "$owner_pid"
   owner_args="$(_state_lock_owner_args "$owner_pid")"
   if [[ -z "$owner_args" ]]; then
-    kill "$owner_pid" 2>/dev/null || true
-    wait "$owner_pid" 2>/dev/null || true
     skip "process argument inspection is unavailable in this shell"
   fi
   mkdir -p "$TEST_PROJECT/.atoshell/.lock"
@@ -83,8 +102,7 @@ _ticket_file_count() {
   _state_lock_reap_stale
 
   [ ! -e "$TEST_PROJECT/.atoshell/.lock" ]
-  kill "$owner_pid" 2>/dev/null || true
-  wait "$owner_pid" 2>/dev/null || true
+  _cleanup_test_process "$owner_pid"
 }
 
 @test "state lock: invalid old metadata is recovered only after stale age" {

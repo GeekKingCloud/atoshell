@@ -13,11 +13,11 @@
 #     curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"
 #
 # Or run directly after cloning:
-#   bash install.sh          # Linux/Git Bash
+#   bash install.sh                         # Linux/Git Bash
 #   "$(brew --prefix)/bin/bash" install.sh  # macOS
 #
 # Options:
-#   --help|-h   Show install usage help and exit
+#   --help|-h  Show install usage help and exit
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -25,6 +25,10 @@ set -euo pipefail
 REPO="https://github.com/GeekKingCloud/atoshell.git"
 INSTALL_DIR="$HOME/atoshell"
 BIN_DIR="$HOME/.local/bin"
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_SOURCE%/*}"
+[[ "$SCRIPT_DIR" == "$SCRIPT_SOURCE" ]] && SCRIPT_DIR="."
+SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 
 require_modern_bash() {
   local major="${BASH_VERSINFO[0]:-0}"
@@ -68,6 +72,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+is_package_install() {
+  [[ -f "$SCRIPT_DIR/package.json" && ! -d "$SCRIPT_DIR/.git" ]]
+}
+
 shell_quote() {
   local value="${1//\'/\'\\\'\'}"
   printf "'%s'" "$value"
@@ -110,6 +118,18 @@ printf '+--------------------------------------------------+\n'
 printf '|          atoshell — installer                    |\n'
 printf '+--------------------------------------------------+\n'
 printf '\n'
+
+if is_package_install; then
+  printf '  This looks like a package-manager install.\n'
+  printf '  atoshell is already installed through the package manager.\n'
+  printf '  Update or reinstall with one of:\n\n'
+  printf '    bun update -g atoshell\n'
+  printf '    npm update -g atoshell\n'
+  printf '    bun install -g atoshell\n'
+  printf '    npm install -g atoshell\n\n'
+  printf '  Run "ato init" in a project to get started.\n\n'
+  exit 0
+fi
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 for _dep in bash git jq; do

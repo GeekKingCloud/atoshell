@@ -7,7 +7,7 @@
 #
 # Commands (simple, japanese, cyberpunk):
 # Setup:
-#   install                                          — Install atoshell on this machine
+#   install                                           — Install atoshell on this machine
 #   uninstall  | nuku       | purge                   — Remove atoshell and (optionally) directory
 #   init       | kido       | boot                    — Initialise .atoshell/ in current directory
 #   update     | noru       | patch                   — Update atoshell to the latest version
@@ -26,7 +26,7 @@
 #   version    | --version  | -v                      — Print the atoshell version
 #
 # Global flags:
-#   --quiet    | -q                                  — Suppress decorative output; auto-enabled on non-TTY stdout
+#   --quiet    | -q                                   — Suppress decorative output; auto-enabled on non-TTY stdout
 #
 # Install:
 #   Linux/Git Bash:

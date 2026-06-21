@@ -111,6 +111,14 @@ _minimal_update_path() {
   printf '%s' "$dir"
 }
 
+_copy_package_install() {
+  local pkg="$BATS_TEST_TMPDIR/package-install"
+  mkdir -p "$pkg"
+  cp "$ATOSHELL_REPO"/*.sh "$ATOSHELL_REPO"/VERSION "$ATOSHELL_REPO"/package.json "$pkg"/
+  cp -R "$ATOSHELL_REPO"/funcs "$ATOSHELL_REPO"/bin "$ATOSHELL_REPO"/.atoshell.example "$pkg"/
+  printf '%s' "$pkg"
+}
+
 # ── 1. Phase 1 — git pull, up to date ─────────────────────────────────────────
 @test "update: Phase 1 git — exit 0 when up to date" {
   mkdir -p "$INSTALL_DIR/.git"
@@ -162,6 +170,37 @@ _minimal_update_path() {
   [[ "$output" == *"curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash"* ]]
   [[ "$output" == *"macOS"* ]]
   [[ "$output" == *"curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | \"\$(brew --prefix)/bin/bash\""* ]]
+}
+
+@test "update: Phase 1 package install — output shows package-manager guidance" {
+  local pkg; pkg="$(_copy_package_install)"
+  run bash "$pkg/update.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"package-manager install"* ]]
+  [[ "$output" == *"bun update -g atoshell"* ]]
+  [[ "$output" == *"npm update -g atoshell"* ]]
+  [[ "$output" != *"Reinstall manually with"* ]]
+  [[ "$output" != *"curl -fsSL"* ]]
+}
+
+@test "update: Phase 1 package install — does not call git or curl fallback" {
+  local pkg; pkg="$(_copy_package_install)"
+  rm -f "$BATS_TEST_TMPDIR/git_calls.log"
+  run bash "$pkg/update.sh"
+  [ "$status" -eq 0 ]
+  [ ! -e "$BATS_TEST_TMPDIR/git_calls.log" ]
+  [[ "$output" != *"curl should not be called"* ]]
+}
+
+@test "update: Phase 1 package install — ignores legacy git checkout in install dir" {
+  local pkg; pkg="$(_copy_package_install)"
+  mkdir -p "$INSTALL_DIR/.git"
+  rm -f "$BATS_TEST_TMPDIR/git_calls.log"
+  run bash "$pkg/update.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"package-manager install"* ]]
+  [[ "$output" == *"npm update -g atoshell"* ]]
+  [ ! -e "$BATS_TEST_TMPDIR/git_calls.log" ]
 }
 
 # ── 4. Phase 1 — no .git, minimal PATH ─────────────────────────────────────────

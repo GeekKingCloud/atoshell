@@ -55,6 +55,7 @@ populated from `tests/fixtures/`. Tests cannot interfere with each other.
 - **`unit/add.bats`**        — `atoshell add`: flags, defaults, field storage, routing by status, `--import` bulk import with two-pass validation, `--json` output and structured errors
 - **`unit/algorithms.bats`** — direct ranking, dependency, and blocker helper coverage
 - **`unit/parser.bats`**     — parser-contract tests for unknown options, missing values, unexpected positional args, and JSON-mode stderr/stdout failures on manually parsed commands
+- **`unit/package.bats`**    — npm-compatible package metadata and package dry-run coverage
 - **`unit/prints.bats`**     — direct rendering coverage for board, blocker, banner, and quiet-mode behavior
 - **`unit/state.bats`**      — direct state helper coverage for locks, atomic writes, transaction recovery, and concurrent ID allocation
 - **`unit/show.bats`**       — `atoshell show`: ticket detail display, board view, `show next`, dep context (`blocked_by`/`blocking`) in human and JSON output, structured errors (`TICKET_NOT_FOUND`, `NO_READY_TICKETS`, `INVALID_TICKET_ID`)

@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+permissions:
+  contents: read
+
 jobs:
   static:
     name: Static checks (10m)
@@ -23,7 +26,26 @@ jobs:
         run: |
           while IFS= read -r file; do
             bash -n "$file"
-          done < <(git ls-files '*.sh' '*.bash' 'bin/*')
+          done < <(git ls-files '*.sh' '*.bash' 'bin/*' ':!:bin/*.js')
+
+      - name: Check unit test workflow coverage
+        run: |
+          matrix_files="$(awk '
+            /^[[:space:]]+files:[[:space:]]/ {
+              sub(/^[[:space:]]+files:[[:space:]]*/, "")
+              print
+            }
+          ' .github/workflows/test.yml | tr " " "\n" | sed "/^$/d")"
+
+          missing=0
+          while IFS= read -r file; do
+            if ! grep -Fxq "$file" <<< "$matrix_files"; then
+              echo "[ERROR] Unit test not listed in workflow: $file"
+              missing=1
+            fi
+          done < <(find tests/unit -type f -name '*.bats' | sort)
+
+          exit "$missing"
 
   unit:
     name: "Unit: ${{ matrix.label }} (${{ matrix.timeout_minutes }}m)"
@@ -36,7 +58,7 @@ jobs:
           - group: state-config
             label: State/config
             timeout_minutes: 15
-            files: tests/unit/config.bats tests/unit/helpers.bats tests/unit/state.bats tests/unit/prints.bats tests/unit/parser.bats
+            files: tests/unit/config.bats tests/unit/helpers.bats tests/unit/state.bats tests/unit/prints.bats tests/unit/parser.bats tests/unit/package.bats
           - group: lifecycle-install
             label: Lifecycle/install
             timeout_minutes: 15
@@ -64,29 +86,220 @@ jobs:
       - name: Run ${{ matrix.label }}
         run: tests/bats/bin/bats --print-output-on-failure ${{ matrix.files }}
 
-  linux-smoke:
-    name: Linux smoke (15m)
-    runs-on: ubuntu-latest
+  package-smoke:
+    name: "Package smoke: ${{ matrix.manager }} / ${{ matrix.label }} (15m)"
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux
+            os: ubuntu-latest
+            manager: npm
+          - label: Linux
+            os: ubuntu-latest
+            manager: Bun
+          - label: macOS
+            os: macos-latest
+            manager: npm
+          - label: macOS
+            os: macos-latest
+            manager: Bun
+          - label: Windows
+            os: windows-latest
+            manager: npm
+          - label: Windows
+            os: windows-latest
+            manager: Bun
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install smoke dependencies
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ matrix.manager == 'Bun' }}
+
+      - name: Install Linux smoke dependencies
+        if: ${{ matrix.label == 'Linux' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Bash smoke
+      - name: Install macOS smoke dependencies
+        if: ${{ matrix.label == 'macOS' }}
+        run: |
+          brew list --formula bash >/dev/null 2>&1 || brew install bash
+          brew list --formula jq >/dev/null 2>&1 || brew install jq
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+
+      - name: Build and inspect package
+        if: ${{ matrix.label != 'Windows' }}
+        run: |
+          package_dir="$RUNNER_TEMP/atoshell-package"
+          mkdir -p "$package_dir"
+
+          npm pack --dry-run --json --pack-destination "$package_dir" > "$package_dir/dry-run.json"
+          jq -e '
+            .[0].files
+            | map(.path) as $paths
+            | ($paths | index("package.json"))
+            and ($paths | index("atoshell.sh"))
+            and ($paths | index("bin/atoshell.js"))
+            and ($paths | index("bin/atoshell"))
+            and ($paths | index("bin/ato"))
+            and ($paths | index("funcs/helpers.sh"))
+            and ($paths | index(".atoshell.example/config.env"))
+            and ($paths | index(".assets/logo-with-background.svg"))
+            and all($paths[]; startswith("tests/") | not)
+            and all($paths[]; startswith(".github/") | not)
+          ' "$package_dir/dry-run.json"
+
+          npm pack --pack-destination "$package_dir"
+          ls "$package_dir"/atoshell-*.tgz > "$package_dir/tarball-path.txt"
+
+      - name: npm global install smoke
+        if: ${{ matrix.manager == 'npm' && matrix.label != 'Windows' }}
+        run: |
+          package_dir="$RUNNER_TEMP/atoshell-package"
+          tarball="$(cat "$package_dir/tarball-path.txt")"
+          npm_prefix="$RUNNER_TEMP/atoshell-npm-global"
+
+          npm install -g "$tarball" --prefix "$npm_prefix"
+          export PATH="$npm_prefix/bin:$PATH"
+
+          atoshell version
+          ato version
+          atoshell help >/tmp/atoshell-npm-help.out
+          ato help >/tmp/ato-npm-help.out
+
+          project="$(mktemp -d)"
+          cd "$project"
+          atoshell init
+          atoshell add "Package smoke" --body "Created from npm package smoke." --json | jq -e '.title == "Package smoke"'
+
+      - name: Bun global install smoke
+        if: ${{ matrix.manager == 'Bun' && matrix.label != 'Windows' }}
+        run: |
+          package_dir="$RUNNER_TEMP/atoshell-package"
+          tarball="$(cat "$package_dir/tarball-path.txt")"
+          export BUN_INSTALL="$RUNNER_TEMP/atoshell-bun-global"
+          mkdir -p "$BUN_INSTALL"
+
+          bun install -g "$tarball"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+
+          atoshell version
+          ato version
+          atoshell help >/tmp/atoshell-bun-help.out
+          ato help >/tmp/ato-bun-help.out
+
+          project="$(mktemp -d)"
+          cd "$project"
+          atoshell init
+          atoshell add "Package smoke" --body "Created from Bun package smoke." --json | jq -e '.title == "Package smoke"'
+
+      - name: Windows package install smoke
+        if: ${{ matrix.label == 'Windows' }}
+        shell: pwsh
+        run: |
+          $packageDir = Join-Path $env:RUNNER_TEMP 'atoshell-package'
+          $env:NPM_CONFIG_CACHE = Join-Path $env:RUNNER_TEMP 'npm-cache'
+          New-Item -ItemType Directory -Force -Path $packageDir, $env:NPM_CONFIG_CACHE | Out-Null
+
+          $dryRunJson = npm pack $env:GITHUB_WORKSPACE --dry-run --json --pack-destination $packageDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $dryRun = $dryRunJson | ConvertFrom-Json
+          $paths = @($dryRun[0].files | ForEach-Object { $_.path })
+          foreach ($requiredPath in @('package.json', 'atoshell.sh', 'bin/atoshell.js', 'bin/atoshell', 'bin/ato', 'funcs/helpers.sh', '.atoshell.example/config.env', '.assets/logo-with-background.svg')) {
+            if ($paths -notcontains $requiredPath) {
+              throw "Package dry-run did not include $requiredPath."
+            }
+          }
+          foreach ($path in $paths) {
+            if ($path.StartsWith('tests/') -or $path.StartsWith('.github/')) {
+              throw "Package dry-run included excluded path $path."
+            }
+          }
+
+          npm pack $env:GITHUB_WORKSPACE --pack-destination $packageDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tarball = Get-ChildItem -Path $packageDir -Filter 'atoshell-*.tgz' | Select-Object -First 1
+          if (-not $tarball) { throw 'Package tarball was not created.' }
+
+          if ('${{ matrix.manager }}' -eq 'npm') {
+            $installRoot = Join-Path $env:RUNNER_TEMP 'atoshell-npm-global'
+            npm install -g $tarball.FullName --prefix $installRoot
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $atoshell = Join-Path $installRoot 'atoshell.cmd'
+            $ato = Join-Path $installRoot 'ato.cmd'
+          } else {
+            $env:BUN_INSTALL = Join-Path $env:RUNNER_TEMP 'atoshell-bun-global'
+            New-Item -ItemType Directory -Force -Path $env:BUN_INSTALL | Out-Null
+            bun install -g $tarball.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $atoshell = Join-Path $env:BUN_INSTALL 'bin\atoshell.exe'
+            $ato = Join-Path $env:BUN_INSTALL 'bin\ato.exe'
+          }
+
+          & $atoshell version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $ato version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $atoshell help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $project = Join-Path $env:RUNNER_TEMP 'atoshell-package-project'
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          Push-Location $project
+          try {
+            & $atoshell init
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $ticket = & $atoshell add 'Package smoke' --body 'Created from Windows package smoke.' --json | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($ticket.title -ne 'Package smoke') { throw 'Package smoke ticket was not created.' }
+          } finally {
+            Pop-Location
+          }
+
+  os-smoke:
+    name: "OS smoke: ${{ matrix.label }} (15m)"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux
+            os: ubuntu-latest
+          - label: macOS
+            os: macos-latest
+          - label: Windows
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install bats-core
+        if: ${{ matrix.label == 'Windows' }}
+        run: git clone --depth 1 --branch v1.11.0 https://github.com/bats-core/bats-core tests/bats
+
+      - name: Install Linux smoke dependencies
+        if: ${{ matrix.label == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Linux Bash smoke
+        if: ${{ matrix.label == 'Linux' }}
         run: |
           bash --version
           bash -c '(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))'
           while IFS= read -r file; do
             bash -n "$file"
-          done < <(git ls-files '*.sh' '*.bash' 'bin/*')
+          done < <(git ls-files '*.sh' '*.bash' 'bin/*' ':!:bin/*.js')
           bash ./atoshell.sh help >/tmp/atoshell-help.out
           bash ./bin/atoshell help >/tmp/atoshell-bin-help.out
 
-      - name: Installed launcher smoke
+      - name: Linux installed launcher smoke
+        if: ${{ matrix.label == 'Linux' }}
         run: |
           install_home="$RUNNER_TEMP/atoshell-home"
           fake_bin="$RUNNER_TEMP/atoshell-fake-bin"
@@ -111,30 +324,26 @@ jobs:
           "$install_home/.local/bin/atoshell" help >/tmp/atoshell-installed-help.out
           "$install_home/.local/bin/ato" help >/tmp/atoshell-installed-ato-help.out
 
-  macos-smoke:
-    name: macOS smoke (15m)
-    runs-on: macos-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-
       - name: Install modern Bash
+        if: ${{ matrix.label == 'macOS' }}
         run: |
           brew list --formula bash >/dev/null 2>&1 || brew install bash
           brew list --formula jq >/dev/null 2>&1 || brew install jq
 
-      - name: Modern Bash smoke
+      - name: macOS modern Bash smoke
+        if: ${{ matrix.label == 'macOS' }}
         run: |
           bash_bin="$(brew --prefix)/bin/bash"
           "$bash_bin" --version
           "$bash_bin" -c '(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))'
           while IFS= read -r file; do
             "$bash_bin" -n "$file"
-          done < <(git ls-files '*.sh' '*.bash' 'bin/*')
+          done < <(git ls-files '*.sh' '*.bash' 'bin/*' ':!:bin/*.js')
           "$bash_bin" ./atoshell.sh help >/tmp/atoshell-help.out
           "$bash_bin" ./bin/atoshell help >/tmp/atoshell-bin-help.out
 
-      - name: System Bash guidance smoke
+      - name: macOS system Bash guidance smoke
+        if: ${{ matrix.label == 'macOS' }}
         run: |
           if /bin/bash ./atoshell.sh help >/tmp/atoshell-system-bash.out 2>/tmp/atoshell-system-bash.err; then
             echo '[ERROR] macOS system Bash unexpectedly passed'
@@ -147,32 +356,25 @@ jobs:
           fi
           grep -q 'requires Bash 4.3 or newer' /tmp/atoshell-install-system-bash.err
 
-  windows-smoke:
-    name: Windows smoke (15m)
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install bats-core
-        run: git clone --depth 1 --branch v1.11.0 https://github.com/bats-core/bats-core tests/bats
-
-      - name: Install smoke dependencies
+      - name: Install Windows smoke dependencies
+        if: ${{ matrix.label == 'Windows' }}
         shell: pwsh
         run: choco install jq -y --no-progress
 
       - name: Git Bash smoke
+        if: ${{ matrix.label == 'Windows' }}
         shell: pwsh
         run: |
           $bash = 'C:\Program Files\Git\bin\bash.exe'
           $workspaceUnix = (& $bash -lc "cygpath -u '$env:GITHUB_WORKSPACE'").Trim()
           & $bash -lc "cd '$workspaceUnix' && bash --version"
           & $bash -lc "cd '$workspaceUnix' && bash -c '(( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 3) ))'"
-          & $bash -lc "cd '$workspaceUnix' && git ls-files '*.sh' '*.bash' 'bin/*' | xargs -r bash -n"
+          & $bash -lc "cd '$workspaceUnix' && git ls-files '*.sh' '*.bash' 'bin/*' ':!:bin/*.js' | xargs -r bash -n"
           & $bash -lc "cd '$workspaceUnix' && ./atoshell.sh help >/tmp/atoshell-help.out"
           & $bash -lc "cd '$workspaceUnix' && ./bin/atoshell help >/tmp/atoshell-bin-help.out"
 
       - name: Windows wrapper smoke
+        if: ${{ matrix.label == 'Windows' }}
         shell: pwsh
         run: |
           $bash = 'C:\Program Files\Git\bin\bash.exe'
@@ -180,6 +382,7 @@ jobs:
           & $bash -lc "cd '$workspaceUnix' && tests/bats/bin/bats --print-output-on-failure tests/unit/install.bats tests/unit/uninstall.bats tests/unit/atoshell.bats"
 
       - name: Installed cmd launcher smoke
+        if: ${{ matrix.label == 'Windows' }}
         shell: pwsh
         run: |
           $bash = 'C:\Program Files\Git\bin\bash.exe'
@@ -219,9 +422,8 @@ jobs:
     needs:
       - static
       - unit
-      - linux-smoke
-      - macos-smoke
-      - windows-smoke
+      - package-smoke
+      - os-smoke
     if: always()
     steps:
       - name: Check required jobs
@@ -236,17 +438,12 @@ jobs:
             exit 1
           fi
 
-          if [[ '${{ needs.linux-smoke.result }}' != 'success' ]]; then
-            echo 'linux-smoke failed'
+          if [[ '${{ needs.package-smoke.result }}' != 'success' ]]; then
+            echo 'package-smoke failed'
             exit 1
           fi
 
-          if [[ '${{ needs.macos-smoke.result }}' != 'success' ]]; then
-            echo 'macos-smoke failed'
-            exit 1
-          fi
-
-          if [[ '${{ needs.windows-smoke.result }}' != 'success' ]]; then
-            echo 'windows-smoke failed'
+          if [[ '${{ needs.os-smoke.result }}' != 'success' ]]; then
+            echo 'os-smoke failed'
             exit 1
           fi

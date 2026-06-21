@@ -29,6 +29,10 @@ source "$(cd "$SCRIPT_DIR" && pwd)/funcs/helpers.sh"
 INSTALL_DIR="$HOME/atoshell"
 INSTALLER_URL="https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh"
 
+_is_package_install() {
+  [[ -f "$ATOSHELL_DIR/package.json" && ! -d "$ATOSHELL_DIR/.git" ]]
+}
+
 # ── Parse flags ───────────────────────────────────────────────────────────────
 walk=false
 while [[ $# -gt 0 ]]; do
@@ -52,7 +56,14 @@ print_banner "atoshell — update"
 # ── Phase 1: CLI self-update ──────────────────────────────────────────────────
 printf '  Phase 1: CLI update\n\n'
 
-if [[ -d "$INSTALL_DIR/.git" ]]; then
+if _is_package_install; then
+  _status_warn 'Automatic CLI update is not available for this install.'
+  printf '         This looks like a package-manager install.\n' >&2
+  printf '         Update with one of:\n' >&2
+  printf '           bun update -g atoshell\n' >&2
+  printf '           npm update -g atoshell\n' >&2
+  printf '         Project files will still be synced below.\n\n' >&2
+elif [[ -d "$INSTALL_DIR/.git" ]]; then
   before=$(git -C "$INSTALL_DIR" rev-parse HEAD)
   printf '  Pulling latest from remote...\n'
   git -C "$INSTALL_DIR" pull --ff-only

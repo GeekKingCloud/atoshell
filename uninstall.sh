@@ -14,6 +14,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/funcs/helpers.sh"
 INSTALL_DIR="$HOME/atoshell"
 BIN_DIR="$HOME/.local/bin"
 
+_is_package_install() {
+  [[ -f "$ATOSHELL_DIR/package.json" && ! -d "$ATOSHELL_DIR/.git" ]]
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h) _show_help "${BASH_SOURCE[0]}"; exit 0 ;;
@@ -32,6 +36,15 @@ printf '+--------------------------------------------------+\n'
 printf '|          atoshell — uninstall                    |\n'
 printf '+--------------------------------------------------+\n'
 printf '\n'
+
+if _is_package_install; then
+  printf '  This looks like a package-manager install.\n'
+  printf '  Remove it with one of:\n\n'
+  printf '    bun remove -g atoshell\n'
+  printf '    npm uninstall -g atoshell\n\n'
+  printf '  Your .atoshell/ project folders are untouched.\n\n'
+  exit 0
+fi
 
 # ── Remove bin entries ────────────────────────────────────────────────────────
 for _bin in atoshell ato atoshell.cmd ato.cmd; do

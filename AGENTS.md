@@ -17,6 +17,7 @@ When you are changing atoshell core rather than using atoshell to manage another
 - `README.md`
 - `AGENTS.md`
 - `STYLE.md`
+- `package.json`
 - `tests/README.md`
 
 If a change affects command names, aliases, help text, wrapper behavior, install/update expectations, JSON output, or the visible CLI framing, update the matching docs and tests in the same change.
@@ -28,6 +29,7 @@ Installer behavior:
 - On Windows/Git Bash, the installer also writes `atoshell.cmd` and `ato.cmd` beside the shell launchers so PowerShell and `cmd.exe` resolve the installed commands.
 - Atoshell requires Bash 4.3 or newer. On macOS, do not rely on the stock `/bin/bash`; install modern Bash with Homebrew and put it before `/bin` in `PATH`.
 - `atoshell update` uses `git pull --ff-only` for git-based installs. If the install is not a git checkout, it prints the manual reinstall command and does not execute a remote installer fallback.
+- Package-manager installs are distributed through the npm-compatible `package.json` `bin` entries for `atoshell` and `ato`. Package-installed `update` / `uninstall` paths must print Bun/npm package-manager guidance instead of mutating package-manager-owned files.
 - Do not add repo-source overrides or project-local paths for testing local checkouts.
 - Do not create coding-agent-owned scratch or capture folders such as `codex-logs`, `.codex`, `agent-logs`, or `scratch` inside `.g8ldfish/`, `.lumber-hack/`, `.atoshell/`, generated runtime folders, or worker worktrees. Tool-owned runtime logs remain in their documented tool paths. Put disposable agent captures under `$env:TEMP\codex\...` and durable agent scratch under `C:\Users\thete\.codex\scratch\...`.
 
@@ -81,6 +83,19 @@ scopes are `queue`, `backlog`/`bl`/`1`, `ready`/`rd`/`2`,
 `q` and `d` scopes are not supported.
 
 `show next` only surfaces tickets that are unassigned or already assigned to the current user. `take` with no ticket argument defaults to `take next`. `take next` pulls from all ranked ready tickets regardless of assignee.
+
+## Tool boundary
+
+Atoshell is the ticket manager. It owns local ticket state, accountability,
+dependencies, comments, status transitions, blocker visibility, and JSON
+import/export. It does not own product specs, delivery target definitions,
+runtime capability checks, implementation orchestration, PR/release tracking, or
+project-level handoff metadata.
+
+Ticket descriptions and comments may point to external plans, specs, designs, or
+run artifacts, but Atoshell treats those pointers as ordinary text. Do not add
+Atoshell core behavior that validates, parses, synchronizes, or depends on those
+external artifacts.
 
 ### Dependency fields on `show <id>`
 

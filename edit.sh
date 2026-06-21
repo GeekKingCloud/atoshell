@@ -33,15 +33,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/funcs/helpers.sh"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/funcs/algorithms.sh"
 _setup
 
-# ── Resolve ticket ────────────────────────────────────────────────────────────
-[[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { _show_help "${BASH_SOURCE[0]}"; exit 0; }
-ticket_id="${1:-}"
-[[ -z "$ticket_id" || "$ticket_id" == -* ]] && { printf 'Error: missing ticket ID.\nUsage: atoshell edit <id> [flags]\n' >&2; exit 1; }
-[[ ! "$ticket_id" =~ ^[0-9]+$ ]] && { printf 'Error: ticket ID must be a number, got "%s".\n' "$(_terminal_safe_line "$ticket_id")" >&2; exit 1; }
-shift
-src_file="$(_find_ticket_file "$ticket_id")"
-
 # ── Parse flags ───────────────────────────────────────────────────────────────
+ticket_id=""
 title_interactive=false title=""
 desc_interactive=false desc_changed=false description=""
 type="" priority="" size="" status=""
@@ -56,6 +49,9 @@ any_changes=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --help|-h)
+      _show_help "${BASH_SOURCE[0]}"
+      exit 0 ;;
     --title|-T)
       [[ $# -lt 2 ]] && { printf 'Error: --title requires a value or "change".\n' >&2; exit 1; }
       val="$2"
@@ -215,12 +211,25 @@ while [[ $# -gt 0 ]]; do
       [[ $# -lt 2 ]] && { printf 'Error: --as requires a value.\n' >&2; exit 1; }
       as="$2"
       shift 2 ;;
-    *)
+    -*)
       printf 'Error: unknown flag: %s\n' "$(_terminal_safe_line "$1")" >&2
       printf 'Run "atoshell help" for usage.\n' >&2
       exit 1 ;;
+    *)
+      if [[ -n "$ticket_id" ]]; then
+        printf 'Error: unexpected argument: %s\n' "$(_terminal_safe_line "$1")" >&2
+        printf 'Usage: atoshell edit <id> [flags]\n' >&2
+        exit 1
+      fi
+      ticket_id="$1"
+      shift ;;
   esac
 done
+
+# ── Resolve ticket ────────────────────────────────────────────────────────────
+[[ -z "$ticket_id" || "$ticket_id" == -* ]] && { printf 'Error: missing ticket ID.\nUsage: atoshell edit <id> [flags]\n' >&2; exit 1; }
+[[ ! "$ticket_id" =~ ^[0-9]+$ ]] && { printf 'Error: ticket ID must be a number, got "%s".\n' "$(_terminal_safe_line "$ticket_id")" >&2; exit 1; }
+src_file="$(_find_ticket_file "$ticket_id")"
 
 $any_changes || {
   printf 'Error: no changes specified. Run "atoshell help" for usage.\n' >&2

@@ -1,45 +1,30 @@
 <p align="center">
-  <img src=".assets/logo.svg" alt="atoshell" width="400">
+  <img src=".assets/logo-with-background.svg" alt="atoshell" width="400">
 </p>
 
 A lightweight, curl-installable, agentic-first terminal ticket tracker. Manage tasks in plain JSON files — no account, no cloud, no setup friction.
 
-## Install
+## Scope Boundary
+
+Atoshell owns the ticket queue: ticket fields, accountability, dependencies, comments, status transitions, blocker visibility, and JSON import/export. It does not own product specs, delivery definitions, runtime capability checks, implementation orchestration, PR/release state, or project-level handoff metadata.
+
+Use ticket descriptions and comments for concise pointers to external plans, specs, designs, or run artifacts when that helps the person or agent taking the ticket. Atoshell stores those references as ordinary ticket text; it does not validate, interpret, or synchronize external artifacts.
+
+## Quick Start
 ```bash
-# Linux / Git Bash
+# One-time install on Linux / Git Bash.
 curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
-```
 
-Requires: `bash` 4.3 or newer, `jq`, `git`.
-
-On macOS, the system `/bin/bash` is usually too old. Install modern Bash first:
-
-```bash
-brew install bash jq git
-curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"
-```
-
-Check the installed CLI version with `atoshell version` or `atoshell -v`.
-
-The installer keeps the CLI checkout in `~/atoshell` and writes launchers under
-`~/.local/bin`.
-
-On Windows, run the installer from Git Bash. It installs the `atoshell` and `ato`
-shell launchers and also writes `atoshell.cmd` and `ato.cmd` so PowerShell and
-`cmd.exe` can invoke the same installed CLI names.
-
-## Quick start
-```bash
 cd /path/to/project
-atoshell init                  # set up .atoshell/ in the current directory
-atoshell add "Fix the thing"   # create a ticket
-atoshell show board            # ASCII kanban view (3 active columns by default)
-atoshell list                  # list active tickets
-atoshell take next             # assign the best ticket (priority/size considered) to me and move to 'In Progress'
-atoshell move 1 in progress    # move ticket #1 (workflow transition)
-atoshell move 1 3              # same — column 3 = In Progress
-atoshell move 1 4              # mark done (column 4)
-atoshell edit 1 --priority p1  # also works via edit
+atoshell init                                             # set up .atoshell/ in the current directory
+atoshell add "Fix the thing" --body "Describe the work."  # create a ticket
+atoshell show board                                       # ASCII kanban view (3 active columns by default)
+atoshell list                                             # list active tickets
+atoshell take next                                        # assign the best ticket (priority/size considered) to me and move to 'In Progress'
+atoshell move 1 in progress                               # move ticket #1 (workflow transition)
+atoshell move 1 3                                         # same — column 3 = In Progress
+atoshell move 1 4                                         # mark done (column 4)
+atoshell edit 1 --priority p1                             # also works via edit
 ```
 
 Run `atoshell` with no arguments for an interactive menu:
@@ -67,6 +52,57 @@ Run `atoshell` with no arguments for an interactive menu:
 
 Menu items start at 0 (init) rather than 1 for consistency with common CLI patterns.
 
+## Install
+```bash
+# Linux / Git Bash
+curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | bash
+```
+
+Requires: `bash` 4.3 or newer, `jq`, `git`.
+
+Atoshell can also be installed from npm-compatible package managers:
+
+```bash
+bun install -g atoshell
+npm install -g atoshell
+```
+
+Package-manager installs still require Bash 4.3 or newer. On Windows, install
+Git Bash or set `ATOSHELL_BASH` to a Bash executable. On macOS, install modern
+Bash with Homebrew and put it before `/bin` in `PATH`, or set `ATOSHELL_BASH`.
+
+After a package-manager install, run the commands directly:
+
+```bash
+atoshell add "Fix the thing" --body "Describe the work."
+ato add "Fix the thing" --body "Describe the work."
+```
+
+For one-off use without a global install:
+
+```bash
+bunx atoshell version
+npx atoshell version
+bunx -p atoshell ato version
+npx -p atoshell ato version
+```
+
+On macOS, the system `/bin/bash` is usually too old. Install modern Bash first:
+
+```bash
+brew install bash jq git
+curl -fsSL https://raw.githubusercontent.com/GeekKingCloud/atoshell/main/install.sh | "$(brew --prefix)/bin/bash"
+```
+
+Check the installed CLI version with `atoshell version` or `atoshell -v`.
+
+The installer keeps the CLI checkout in `~/atoshell` and writes launchers under
+`~/.local/bin`.
+
+On Windows, run the installer from Git Bash. It installs the `atoshell` and `ato`
+shell launchers and also writes `atoshell.cmd` and `ato.cmd` so PowerShell and
+`cmd.exe` can invoke the same installed CLI names.
+
 ---
 
 ## Commands
@@ -88,9 +124,9 @@ Aliases: `tasu`, `fab`, `new`, `open`
 Create a new ticket. If no title is given, opens an interactive prompt.
 
 ```bash
-atoshell add "Fix login bug"
+atoshell add "Fix login bug" --body "Login form fails after submit."
 atoshell add "Fix login bug" --priority P1 --size S --description "Details here"
-atoshell add "Auth spike" --disciplines Backend --assign lyra,me
+atoshell add "Auth spike" --body "Compare auth options." --disciplines Backend --assign lyra,me
 atoshell add "Agent import" --body "Created by orchestrator" --as agent-1
 atoshell add --multi                 # keep adding tickets until title is left blank
 atoshell add --stream --simple       # rapid-fire: just enter titles, all defaults applied
@@ -120,6 +156,11 @@ atoshell add --import -              # same, reading from stdin
 or `--simple`. Single-ticket JSON creation requires both an explicit title and
 description (`--description`, `--desc`, `--body`, or `-b`); use `--import` for
 batch JSON creation where only `title` is required per item.
+
+Atoshell import is a ticket intake surface, not a project context handoff. Imported
+descriptions may include links or notes that point to upstream planning material,
+but Atoshell treats them as ticket text and does not validate referenced files,
+specs, runtimes, or execution environments.
 
 > `--discipline` and `--dependency` are also valid aliases. `fe` and `be` are accepted as shorthand for `Frontend` and `Backend`. When a ticket is deleted, any tickets that depend on it are flagged and you are prompted to remove the dangling reference.
 
@@ -338,9 +379,9 @@ atoshell take
 atoshell take next
 atoshell take next --json
 atoshell take next --disciplines Backend --priority P0,P1
-atoshell take 5 --force           # override done guard
-atoshell take next --as agent-1   # orchestrator: claim on behalf of a numbered sub-agent
-atoshell take next --as 1         # shorthand for agent-1
+atoshell take 5 --force          # override done guard
+atoshell take next --as agent-1  # orchestrator: claim on behalf of a numbered sub-agent
+atoshell take next --as 1        # shorthand for agent-1
 ```
 
 | Flag / Aliases                           | Description                                                                      |
@@ -401,7 +442,7 @@ atoshell search "login" --json  # output as JSON array (agent-friendly)
 ### `update`
 Aliases: `noru`, `patch`
 
-Pull the latest atoshell CLI and sync project files and config. Git-based installs update with `git pull --ff-only`; non-git installs print the manual reinstall command instead of executing a remote installer. Creates any missing `.atoshell/` files and adds new config vars introduced since the last update.
+Pull the latest atoshell CLI and sync project files and config. Git-based installs update with `git pull --ff-only`; package installs print `bun update -g atoshell` / `npm update -g atoshell` guidance; other non-git installs print the manual curl reinstall command instead of executing a remote installer. Creates any missing `.atoshell/` files and adds new config vars introduced since the last update.
 
 ```bash
 atoshell update
@@ -431,12 +472,71 @@ atoshell -v
 Aliases: `nuku`, `purge`
 
 Remove atoshell. Your `.atoshell/` project data is never touched.
+Package-manager installs should be removed through the package manager:
+`bun remove -g atoshell` or `npm uninstall -g atoshell`.
 
 ```bash
 atoshell uninstall
 ```
 
 ---
+
+## Data storage
+Each project gets a `.atoshell/` directory:
+
+```
+.atoshell/
+  config.env    # project configuration (gitignored)
+  queue.json    # active tickets: Ready → In Progress (committed)
+  backlog.json  # parked / untriaged tickets (committed)
+  done.json     # completed tickets (committed)
+  meta.json     # local metadata such as next_id (gitignored)
+```
+
+`queue.json`, `backlog.json`, and `done.json` are shared project state. `config.env` and `meta.json` are local-only.
+
+Ticket schema:
+
+```json
+{
+  "id": 1,
+  "uuid": "2136d109-2e74-42d6-9519-91128337188b",
+  "title": "Fix login bug",
+  "description": "Full details here",
+  "status": "Ready",
+  "priority": "P1",
+  "size": "S",
+  "type": "Bug",
+  "disciplines": ["Backend"],
+  "accountable": ["lyra"],
+  "dependencies": [2],
+  "comments": [
+    {
+      "author": "lyra",
+      "text": "Reproduced on staging",
+      "created_at": "2026-01-01T01:00:00Z"
+    }
+  ],
+  "created_by": "lyra",
+  "created_at": "2026-01-01T00:00:00Z",
+  "updated_by": "lyra",
+  "updated_at": "2026-01-01T01:00:00Z"
+}
+```
+
+`created_at` and `updated_at` are written in the timezone configured by
+`ATOSHELL_TIMEZONE` in `.atoshell/config.env`. The default is `UTC`, which keeps
+the historical `...Z` format. Use IANA timezone names such as
+`ATOSHELL_TIMEZONE="America/Mexico_City"` to write local timestamps with an
+ISO-8601 offset such as `2026-04-23T23:00:00-06:00`.
+
+`show <id> --json` also computes:
+
+- `blocked`: `true` when any dependency is still open
+- `blocked_by`: unresolved dependency objects `{id,title,status}`
+- `blocking`: open dependent ticket objects `{id,title,status}`
+
+These fields are computed at read time and are not stored on disk.
 
 ## Configuration
 Each project's `.atoshell/config.env` controls how atoshell behaves for that project.
@@ -543,63 +643,6 @@ See [STYLE.md](STYLE.md) for coding standards and contribution guidelines.
 - Run the full suite only as a final confidence pass
 - Submit PRs to the dev branch
 
-
-## Data storage
-Each project gets a `.atoshell/` directory:
-
-```
-.atoshell/
-  config.env    # project configuration (gitignored)
-  queue.json    # active tickets: Ready → In Progress (committed)
-  backlog.json  # parked / untriaged tickets (committed)
-  done.json     # completed tickets (committed)
-  meta.json     # local metadata such as next_id (gitignored)
-```
-
-`queue.json`, `backlog.json`, and `done.json` are shared project state. `config.env` and `meta.json` are local-only.
-
-Ticket schema:
-
-```json
-{
-  "id": 1,
-  "uuid": "2136d109-2e74-42d6-9519-91128337188b",
-  "title": "Fix login bug",
-  "description": "Full details here",
-  "status": "Ready",
-  "priority": "P1",
-  "size": "S",
-  "type": "Bug",
-  "disciplines": ["Backend"],
-  "accountable": ["lyra"],
-  "dependencies": [2],
-  "comments": [
-    { 
-      "author": "lyra", 
-      "text": "Reproduced on staging", 
-      "created_at": "2026-01-01T01:00:00Z" 
-    }
-  ],
-  "created_by": "lyra",
-  "created_at": "2026-01-01T00:00:00Z",
-  "updated_by": "lyra",
-  "updated_at": "2026-01-01T01:00:00Z"
-}
-```
-
-`created_at` and `updated_at` are written in the timezone configured by
-`ATOSHELL_TIMEZONE` in `.atoshell/config.env`. The default is `UTC`, which keeps
-the historical `...Z` format. Use IANA timezone names such as
-`ATOSHELL_TIMEZONE="America/Mexico_City"` to write local timestamps with an
-ISO-8601 offset such as `2026-04-23T23:00:00-06:00`.
-
-`show <id> --json` also computes:
-
-- `blocked`: `true` when any dependency is still open
-- `blocked_by`: unresolved dependency objects `{id,title,status}`
-- `blocking`: open dependent ticket objects `{id,title,status}`
-
-These fields are computed at read time and are not stored on disk.
 
 ## License
 
