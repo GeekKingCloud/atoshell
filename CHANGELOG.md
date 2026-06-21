@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1]
+
+### Fixed
+
+- Updated the README logo background to match GitHub's `rgb(33, 40, 48)` surface color.
+- Released a patch version because npm package versions are immutable, so the README/logo fix also validates the new GitHub release-triggered npm publishing workflow.
+
 ## [2.2.0]
 
 ### Changed

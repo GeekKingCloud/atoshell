@@ -6,7 +6,7 @@ load '../helpers/setup'
 @test "package: metadata exposes atoshell and ato bin entries" {
   jq -e \
     '.name == "atoshell"
-     and .version == "2.2.0"
+     and .version == "2.2.1"
      and .license == "GPL-3.0-only"
      and .bin.atoshell == "bin/atoshell.js"
      and .bin.ato == "bin/atoshell.js"' \
@@ -34,7 +34,7 @@ _node_bash_path() {
 
   run node "$ATOSHELL_REPO/bin/atoshell.js" version
   [ "$status" -eq 0 ]
-  [ "$output" = "atoshell 2.2.0" ]
+  [ "$output" = "atoshell 2.2.1" ]
 }
 
 @test "package: node launcher honors ATOSHELL_BASH override" {
@@ -43,7 +43,7 @@ _node_bash_path() {
 
   run env ATOSHELL_BASH="$(_node_bash_path)" node "$ATOSHELL_REPO/bin/atoshell.js" version
   [ "$status" -eq 0 ]
-  [ "$output" = "atoshell 2.2.0" ]
+  [ "$output" = "atoshell 2.2.1" ]
 }
 
 @test "package: node launcher explains missing Bash dependency" {
