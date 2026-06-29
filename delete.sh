@@ -9,6 +9,7 @@
 # Options:
 #   --yes|-y   Skip confirmation prompts (also auto-removes dangling dependencies)
 # Options (Output):
+#   --json|-j  Output deletion summary as JSON (requires --yes)
 #   --help|-h  Show 'delete' usage help and exit
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -19,7 +20,9 @@ _setup
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
 yes=false
+json=false
 ids=()
+_cli_json_requested "$@" && json=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -27,14 +30,17 @@ while [[ $# -gt 0 ]]; do
     --yes|-y)
       yes=true
       shift ;;
+    --json|-j)
+      json=true
+      shift ;;
     -*)
-      printf 'Error: unknown option "%s".\n' "$(_terminal_safe_line "$1")" >&2; exit 1 ;;
+      _cli_error "$json" "UNKNOWN_OPTION" "unknown option \"$1\"." "option" "$1" ;;
     *)
       # Splits id list using commas to save to a list
       IFS=',' read -ra _ids <<< "$1"
       for _id in "${_ids[@]}"; do
         _id="${_id// /}"
-        [[ ! "$_id" =~ ^[0-9]+$ ]] && { printf 'Error: ticket ID must be a number, got "%s".\n' "$(_terminal_safe_line "$_id")" >&2; exit 1; }
+        [[ ! "$_id" =~ ^[0-9]+$ ]] && _cli_error "$json" "INVALID_TICKET_ID" "ticket ID must be a number, got \"$_id\"." "got" "$_id"
         ids+=("$_id")
       done
       shift ;;
@@ -42,13 +48,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── Empty check ───────────────────────────────────────────────────────────────
-[[ "${#ids[@]}" -eq 0 ]] && { printf 'Error: missing ticket ID(s).\nUsage: atoshell delete <id[,id,...]> [--yes]\n' >&2; exit 1; }
+[[ "${#ids[@]}" -eq 0 ]] && _cli_error "$json" "MISSING_ARGUMENT" "missing ticket ID(s). Usage: atoshell delete <id[,id,...]> [--yes]." "argument" "id"
+
+if $json && ! $yes; then
+  _cli_error "$json" "INVALID_ARGUMENT" "--json requires --yes because delete confirmation prompts are human-only." "option" "--json"
+fi
 
 # ── Delete ────────────────────────────────────────────────────────────────────
-_outf '\n'
+$json || _outf '\n'
 failed=false
 declare -a delete_messages=()
 declare -a confirmed_ids=()
+declare -a deleted_ids=()
+declare -a json_removed_deps=()
 declare -A dep_prompted=()
 declare -A dep_remove_confirmed=()
 
@@ -90,6 +102,25 @@ else
   confirmed_ids=("${ids[@]}")
 fi
 
+if $json; then
+  declare -A json_seen_ids=()
+  for id in "${confirmed_ids[@]+"${confirmed_ids[@]}"}"; do
+    if [[ -n "${json_seen_ids[$id]+_}" ]]; then
+      _cli_error "$json" "INVALID_ARGUMENT" "duplicate ticket ID #$id." "id" "$id"
+    fi
+    json_seen_ids["$id"]=1
+
+    found=false
+    for state_file in "$QUEUE_FILE" "$BACKLOG_FILE" "$DONE_FILE"; do
+      if jq -e --arg id "$id" 'any(.tickets[]; .id | tostring == $id)' "$state_file" >/dev/null 2>&1; then
+        found=true
+        break
+      fi
+    done
+    $found || _cli_error "$json" "TICKET_NOT_FOUND" "ticket #$id not found." "id" "$id"
+  done
+fi
+
 if [[ "${#confirmed_ids[@]}" -eq 0 ]]; then
   for msg in "${delete_messages[@]+"${delete_messages[@]}"}"; do
     _outln "$msg"
@@ -108,6 +139,7 @@ for id in "${confirmed_ids[@]+"${confirmed_ids[@]}"}"; do
     continue
   fi
   jq_inplace "$src_file" --arg id "$id" 'del(.tickets[] | select(.id | tostring == $id))'
+  deleted_ids+=("$id")
   delete_messages+=("$(printf '  Deleted #%s.' "$id")")
 
   for dep_file in "$QUEUE_FILE" "$BACKLOG_FILE" "$DONE_FILE"; do
@@ -119,6 +151,7 @@ for id in "${confirmed_ids[@]+"${confirmed_ids[@]}"}"; do
       if $yes || [[ -n "${dep_remove_confirmed["$id:$dep_id"]+_}" ]]; then
         jq_inplace "$dep_file" --argjson id "$id" --arg dep_id "$dep_id" \
           '(.tickets[] | select(.id | tostring == $dep_id) | .dependencies) |= map(select(. != $id))'
+        json_removed_deps+=("$(jq -n -c --argjson ticket_id "$dep_id" --argjson dependency_id "$id" '{ticket_id: $ticket_id, dependency_id: $dependency_id}')")
         delete_messages+=("$(printf '  Removed dependency on #%s from #%s.' "$id" "$dep_id")")
       elif [[ -z "${dep_prompted["$id:$dep_id"]+_}" ]]; then
         delete_messages+=("$(printf '  Warning: #%s still lists deleted ticket #%s as a dependency.' "$dep_id" "$id")")
@@ -127,6 +160,22 @@ for id in "${confirmed_ids[@]+"${confirmed_ids[@]}"}"; do
   done
 done
 _state_transaction_commit
+
+if $json; then
+  deleted_json='[]'
+  removed_json='[]'
+  if [[ "${#deleted_ids[@]}" -gt 0 ]]; then
+    deleted_json=$(printf '%s\n' "${deleted_ids[@]}" | jq -R 'tonumber' | jq -s '.')
+  fi
+  if [[ "${#json_removed_deps[@]}" -gt 0 ]]; then
+    removed_json=$(printf '%s\n' "${json_removed_deps[@]}" | jq -s '.')
+  fi
+  jq -n --argjson deleted "$deleted_json" --argjson removed "$removed_json" \
+    '{deleted: $deleted, removed_dependencies: $removed}'
+  if [[ "$failed" == true ]]; then exit 1; fi
+  exit 0
+fi
+
 for msg in "${delete_messages[@]+"${delete_messages[@]}"}"; do
   _outln "$msg"
 done

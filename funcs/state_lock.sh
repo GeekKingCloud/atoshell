@@ -146,6 +146,10 @@ _state_lock_acquire() {
 
 _state_lock_release() {
   if [[ "${_STATE_LOCK_HELD:-false}" == true ]]; then
+    if declare -F _state_transaction_recover >/dev/null &&
+      [[ "${_STATE_TRANSACTION_ACTIVE:-false}" == true ]]; then
+      _state_transaction_recover
+    fi
     rm -rf "$(_state_lock_dir)"
     _STATE_LOCK_HELD=false
   fi

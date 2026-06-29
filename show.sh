@@ -13,7 +13,7 @@
 #   --done     Include Done and show all tickets per column (board view)
 #   --all      Include Done and show all tickets per column (board view)
 #   --full|-f  Wrap board cells; continued lines are indented and end with "-"
-#   --json|-j  Output ticket as JSON (agent-friendly)
+#   --json|-j  Output a ticket or next ticket as JSON (not board view)
 #   --help|-h  Show 'show' usage help and exit
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -62,6 +62,9 @@ done
 # ── Board view ────────────────────────────────────────────────────────────────
 # I make this typo far too often...
 if [[ "$scope" == "board" || "$scope" == "baord" ]]; then
+  if $json; then
+    _json_error "INVALID_ARGUMENT" "option" "--json" "scope" "$scope"
+  fi
   $all && done=true
   $done && all=true
   _print_board "$done" "$all" "$full"

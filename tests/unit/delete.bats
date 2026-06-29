@@ -224,6 +224,49 @@ EOF
   [[ "$output" != *"depends on"* ]]
 }
 
+# ── 8. JSON output ───────────────────────────────────────────────────────────
+@test "delete --json: outputs deletion summary object" {
+  run atoshell delete 2 --yes --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == \{* ]]
+  echo "$output" | jq -e '.deleted == [2] and .removed_dependencies == []' >/dev/null
+}
+
+@test "delete -j: short flag outputs deletion summary object" {
+  run atoshell delete 2 --yes -j
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.deleted == [2]' >/dev/null
+}
+
+@test "delete --json: multi-delete includes all deleted IDs" {
+  run atoshell delete 1,2 --yes --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.deleted == [1,2]' >/dev/null
+}
+
+@test "delete --json: dependency cleanup is included in summary" {
+  run atoshell delete 1 --yes --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.deleted == [1] and .removed_dependencies == [{ticket_id: 3, dependency_id: 1}]' >/dev/null
+}
+
+@test "delete --json: requires --yes because prompts are human-only" {
+  run_split atoshell delete 1 --json
+  assert_json_error_split "INVALID_ARGUMENT"
+}
+
+@test "delete --json: missing ticket emits JSON error on stderr only" {
+  run_split atoshell delete 999 --yes --json
+  assert_json_error_split "TICKET_NOT_FOUND"
+}
+
+@test "delete --json: duplicate ID emits JSON error before mutation" {
+  run_split atoshell delete 1,1 --yes --json
+  assert_json_error_split "INVALID_ARGUMENT"
+  count=$(jq '[.tickets[] | select(.id==1)] | length' .atoshell/queue.json)
+  [ "$count" -eq 1 ]
+}
+
 # ── --help flag ──────────────────────────────────────────────────────────────
 @test "delete --help: exits 0" {
   run atoshell delete --help

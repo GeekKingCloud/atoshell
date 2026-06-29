@@ -136,7 +136,8 @@ _config_template() {
   printf 'ATOSHELL_TIMEZONE="%s"\n' "$ATOSHELL_TIMEZONE"
   printf '\n'
   printf '%s\n' '# ── Blocker handling (dependency budget) ───────────────────────────────────────'
-  printf '%s\n' '# How much size-budget to spend clearing blockers for each priority tier.'
+  printf '%s\n' '# How much size-budget to spend clearing blockers for valuable blocked tickets.'
+  printf '%s\n' '# `take next` skips blocked work whose cleanup cost exceeds the relevant budget.'
   printf '%s\n' '# Size cost = size rank: XS=0, S=1, M=2, L=3, XL=4. P0 blockers always cost 0.'
   printf '%s\n' '# Leave UNBLOCK_P0_BUDGET empty for infinite (always worth clearing all blockers).'
   printf 'UNBLOCK_P0_BUDGET="%s"   # infinite\n' "$UNBLOCK_P0_BUDGET"

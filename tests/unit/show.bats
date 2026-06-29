@@ -431,6 +431,18 @@ EOF
   [[ "$output" == *"Pass --done"* ]]
 }
 
+@test "show board --json: rejects structured output for human board view" {
+  run_split atoshell show board --json
+  assert_json_error_split "INVALID_ARGUMENT"
+  [ "$(jq -r '.option' "$BATS_TEST_TMPDIR/stderr")" = "--json" ]
+}
+
+@test "show baord -j: rejects structured output for human board typo alias" {
+  run_split atoshell show baord -j
+  assert_json_error_split "INVALID_ARGUMENT"
+  [ "$(jq -r '.scope' "$BATS_TEST_TMPDIR/stderr")" = "baord" ]
+}
+
 # ── 8. Error cases ────────────────────────────────────────────────────────────
 @test "show: no argument exits non-zero" {
   run atoshell show
@@ -529,6 +541,11 @@ EOF
   [ "$status" -eq 0 ]
   id=$(echo "$output" | jq '.id')
   [ "$id" -eq 1 ]
+}
+@test "show next --json: default fixture does not mark dependency-free ticket blocked" {
+  run atoshell show next --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.id == 1 and .blocked == false and (has("_block_reason") | not)' >/dev/null
 }
 @test "show next --json: priority ordering — P0 returned before P1" {
   printf '{"tickets":[

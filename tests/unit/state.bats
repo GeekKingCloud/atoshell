@@ -180,6 +180,24 @@ teardown() {
   [ "$after_count" -eq "$before_count" ]
 }
 
+@test "state transaction: lock release rolls back active transaction" {
+  load_atoshell_helpers
+  local before_count staged_count after_count
+  before_count=$(jq '.tickets | length' "$QUEUE_FILE")
+
+  _state_lock_acquire
+  _state_transaction_begin
+  jq_inplace "$QUEUE_FILE" '.tickets = []'
+  staged_count=$(jq '.tickets | length' "$(_state_transaction_current_file "$QUEUE_FILE")")
+  _state_lock_release
+  after_count=$(jq '.tickets | length' "$QUEUE_FILE")
+
+  [ "$staged_count" -eq 0 ]
+  [ "$after_count" -eq "$before_count" ]
+  [ ! -e "$TEST_PROJECT/.atoshell/.lock" ]
+  [ ! -e "$TEST_PROJECT/.atoshell/.transaction" ]
+}
+
 @test "state transaction: commit updates files by rename and removes journal" {
   load_atoshell_helpers
 

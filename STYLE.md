@@ -59,6 +59,7 @@ Every command script should:
 - Human-facing command lists use aligned columns plus an em dash before the description.
 - Runtime framing should prefer ASCII boxes that match actual CLI output.
 - In generated or example `config.env` files, align inline comments 2 spaces after the longest assignment in that contiguous block. Keep section banners and explanatory comments in the same order as the generated template.
+- Agent-facing docs should prefer canonical commands and task flows. Keep full alias inventories in user-facing docs unless an alias is directly required for an automation contract.
 
 ### Module headers
 

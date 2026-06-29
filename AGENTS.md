@@ -64,6 +64,9 @@ atoshell move <id> done             # close when complete
 ## Reading state
 
 All structured output uses `--json` / `-j`. Prefer it over parsing human output.
+`show board` is human-readable only; use `list --json` or a scoped
+`list <scope> --json` command when automation needs structured board or queue
+state.
 
 | Goal                             | Command                               |
 |----------------------------------|---------------------------------------|
@@ -83,6 +86,25 @@ scopes are `queue`, `backlog`/`bl`/`1`, `ready`/`rd`/`2`,
 `q` and `d` scopes are not supported.
 
 `show next` only surfaces tickets that are unassigned or already assigned to the current user. `take` with no ticket argument defaults to `take next`. `take next` pulls from all ranked ready tickets regardless of assignee.
+
+### Ready-ticket ranking and dependency budgets
+
+`show next` / `take next` are designed to return the best actionable ticket, not
+blindly the highest-priority ticket in the queue. Atoshell first uses dependency
+ordering to keep blocked work behind the tickets that unblock it, then applies
+priority, size, and optional filters. Under the hood this is Kahn-style
+topological ranking with a second pass that lets valuable blocked work pull a
+limited amount of cleanup forward.
+
+The cleanup budget is configured in `.atoshell/config.env` with
+`UNBLOCK_P0_BUDGET` and `UNBLOCK_P1_BUDGET`. Empty means unlimited for that
+priority. Numeric values are size-budget points where `XS=0`, `S=1`, `M=2`,
+`L=3`, and `XL=4`; P0 blockers cost 0 because they are always considered worth
+clearing. For example, `UNBLOCK_P1_BUDGET="3"` means a P1 ticket can pull
+forward blocker tickets totaling one `L`, three `S`, or one `S` plus one `M`.
+If a high-priority ticket is blocked by more cleanup than the configured budget,
+Atoshell leaves that blocker chain behind for `next` and returns a quicker
+actionable value win instead.
 
 ## Tool boundary
 
@@ -183,11 +205,12 @@ This lets agents branch on failure type without parsing human-readable strings. 
 | Code                       | Command                   | Meaning                                                                                |
 |----------------------------|---------------------------|----------------------------------------------------------------------------------------|
 | `NO_READY_TICKETS`         | `show next`, `take next`  | No unblocked ready ticket available                                                    |
-| `TICKET_NOT_FOUND`         | `show`, `take`            | ID not found in any file                                                               |
+| `TICKET_NOT_FOUND`         | `show`, `take`, `edit`, `comment`, `move`, `delete` | ID not found in any file                                      |
 | `TICKET_CLOSED`            | `take`                    | Ticket is Done — use `--force` to override                                             |
 | `TICKET_ALREADY_ASSIGNED`  | `take`                    | Ticket is assigned to other users; agent is not yet on it — use `--force` to override  |
 | `TICKET_ALSO_ASSIGNED`     | `take`                    | Ticket is assigned to agent and one or more others — use `--force` to suppress         |
-| `INVALID_TICKET_ID`        | `show`, `take`            | Argument is not a numeric ID                                                           |
+| `COMMENT_NOT_FOUND`        | `comment`                 | Requested comment position does not exist on the ticket                                |
+| `INVALID_TICKET_ID`        | `show`, `take`, `comment`, `move`, `delete` | Argument is not a numeric ID                                           |
 | `FILE_NOT_FOUND`           | `add --import`            | Import file path does not exist                                                        |
 | `INVALID_JSON`             | `add --import`            | Input is not parseable JSON                                                            |
 | `INVALID_FORMAT`           | `add --import`            | Input is valid JSON but not an array                                                   |
@@ -195,15 +218,15 @@ This lets agents branch on failure type without parsing human-readable strings. 
 | `UNKNOWN_OPTION`           | JSON-capable commands     | Unsupported CLI option when `--json` / `-j` was requested                              |
 | `UNEXPECTED_ARGUMENT`      | JSON-capable commands     | Extra or unsupported positional argument when `--json` / `-j` was requested            |
 | `MISSING_ARGUMENT`         | JSON-capable commands     | Required argument or flag value is missing when `--json` / `-j` was requested          |
-| `INVALID_TYPE`             | `add`, `list`, `take`     | Type value or type filter is invalid                                                   |
-| `INVALID_PRIORITY`         | `add`, `list`, `take`     | Priority value or priority filter is invalid                                           |
-| `INVALID_SIZE`             | `add`, `list`, `take`     | Size value or size filter is invalid                                                   |
-| `INVALID_STATUS`           | `add`, `list`             | Status value is invalid                                                                |
-| `INVALID_DISCIPLINE`       | `add`, `list`, `take`     | Discipline value or discipline filter is invalid                                       |
-| `INVALID_DEPENDENCY`       | `add`                     | Dependency value is not a numeric ticket ID                                            |
-| `DEP_NOT_FOUND`            | `add`                     | Dependency ticket ID does not exist                                                    |
-| `INVALID_ACTOR`            | `add`, `take`             | `--as` value is not a positive number or `agent-N`                                     |
-| `INVALID_ARGUMENT`         | `add`, `take`             | Mutually exclusive or unsupported argument combination                                 |
+| `INVALID_TYPE`             | `add`, `edit`, `list`, `take` | Type value or type filter is invalid                                               |
+| `INVALID_PRIORITY`         | `add`, `edit`, `list`, `take` | Priority value or priority filter is invalid                                       |
+| `INVALID_SIZE`             | `add`, `edit`, `list`, `take` | Size value or size filter is invalid                                               |
+| `INVALID_STATUS`           | `add`, `edit`, `list`, `move` | Status value is invalid                                                            |
+| `INVALID_DISCIPLINE`       | `add`, `edit`, `list`, `take` | Discipline value or discipline filter is invalid                                   |
+| `INVALID_DEPENDENCY`       | `add`, `edit`             | Dependency value is not a numeric ticket ID                                            |
+| `DEP_NOT_FOUND`            | `add`, `edit`             | Dependency ticket ID does not exist                                                    |
+| `INVALID_ACTOR`            | `add`, `edit`, `comment`, `move`, `take` | `--as` value is not a positive number or `agent-N`                       |
+| `INVALID_ARGUMENT`         | JSON-capable commands     | Mutually exclusive or unsupported argument combination                                 |
 
 `VALIDATION_FAILED` carries the full error list so the caller can fix and retry:
 
@@ -254,7 +277,12 @@ Comments are the right place to record findings, decisions, or partial results m
 atoshell comment <id> "Identified root cause: ..."
 atoshell comment <id> --as agent-1 "Identified root cause: ..."
 atoshell comment <id> "Blocked — dependency #4 must ship first"
+atoshell comment <id> "Progress note" --json
 ```
+
+`comment --json` returns the changed ticket after add, edit, or delete. Provide
+comment text inline for JSON add/edit; interactive comment prompts are
+human-only.
 
 ---
 
@@ -264,6 +292,7 @@ atoshell comment <id> "Blocked — dependency #4 must ship first"
 atoshell move <id> done         # complete
 atoshell move <id> in progress  # reopen
 atoshell move <id> 1            # column number: 1=Backlog 2=Ready 3=In Progress 4=Done
+atoshell move <id[,id]> done --json  # returns a JSON array of moved tickets
 ```
 
 Multi-word statuses do not need quotes in `move`, `edit`, `list`, or `add`. `--quiet` suppresses output.
@@ -304,7 +333,9 @@ atoshell add --import -             # read from stdin
 ]
 ```
 
-Only `title` is required. All other fields fall back to the project's configured defaults (`TYPE_2`, `PRIORITY_2`, `SIZE_2`, `STATUS_READY`; stock labels: `Task`, `P2`, `M`, `Ready`). `description` / `body` are both accepted. If an imported item includes an `id`, atoshell treats it as a batch-local reference and remaps it to a fresh local ID during import; dependencies that point at other imported items are rewritten to those new IDs automatically.
+Only `title` is required for bulk import. All other fields fall back to the project's configured defaults (`TYPE_2`, `PRIORITY_2`, `SIZE_2`, `STATUS_READY`; stock labels: `Task`, `P2`, `M`, `Ready`). `description` / `body` are both accepted. This differs from direct single-ticket `add --json`, which is intentionally non-interactive and requires both a title and an explicit description/body. Use `add --import` when an upstream planner needs the title-only easy path.
+
+If an imported item includes an `id`, atoshell treats it as a batch-local reference and remaps it to a fresh local ID during import; dependencies that point at other imported items are rewritten to those new IDs automatically.
 
 **Validation** runs before any ticket is written. Structural errors (missing title, non-existent dependency IDs, non-numeric deps) are all reported upfront and nothing is created until the batch is clean. Invalid field values (bad type/priority/size/status) are caught per-item by the standard resolvers with clear error messages.
 
@@ -385,7 +416,7 @@ For quick CLI checks outside the full suite, prefer explicit Git Bash commands a
 |-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
 | No ready tickets                    | `take next` / `show next` exit 1 with error on stderr — stop gracefully                                                          |
 | Ticket already Done                 | `take <id> --force` to override — also suppresses all warnings; cannot be used with `next`                                       |
-| Ticket has unresolved dependencies  | It will not appear in `show next` / `take next` — check `list blockers`                                                          |
+| Ticket has unresolved dependencies  | Its blockers can be pulled forward by cleanup budget; otherwise `show next` / `take next` skip that chain — check `list blockers` |
 | Ticket already assigned to others   | `take` exits 1 with `TICKET_ALREADY_ASSIGNED` (or `TICKET_ALSO_ASSIGNED` if agent is already on it) — use `--force` to override  |
 | Ticket already In Progress          | `take` warns but still moves to In Progress — use `--force` to suppress the warning                                              |
 

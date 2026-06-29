@@ -503,6 +503,44 @@ EOF
   [ "$pri" = "P3" ]
 }
 
+# ── 13. JSON output ──────────────────────────────────────────────────────────
+@test "edit --json: outputs changed ticket as JSON" {
+  run atoshell edit 1 --priority P0 --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == \{* ]]
+  echo "$output" | jq -e '.id == 1 and .priority == "P0"' >/dev/null
+}
+
+@test "edit -j: short flag outputs changed ticket as JSON" {
+  run atoshell edit 1 --size XS -j
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.id == 1 and .size == "XS"' >/dev/null
+}
+
+@test "edit --json: unknown option emits JSON error on stderr only" {
+  run_split atoshell edit 1 --json --bogus
+  assert_json_error_split "UNKNOWN_OPTION"
+}
+
+@test "edit --json: interactive title change is rejected as structured error" {
+  run_split atoshell edit 1 --title change --json
+  assert_json_error_split "INVALID_ARGUMENT"
+}
+
+@test "edit --json: skipped removal does not print human warning before JSON" {
+  run atoshell edit 1 --accountable remove nobody --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == \{* ]]
+  echo "$output" | jq -e '.id == 1' >/dev/null
+}
+
+@test "edit --json: missing dependency emits DEP_NOT_FOUND JSON error" {
+  run_split atoshell edit 1 --depends add 999 --json
+  assert_json_error_split "DEP_NOT_FOUND"
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
+}
+
 # ── --help flag ──────────────────────────────────────────────────────────────
 @test "edit --help: exits 0" {
   run atoshell edit --help

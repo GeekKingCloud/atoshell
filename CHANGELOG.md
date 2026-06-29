@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.2.2]
+
+### Changed
+
+- Documented dependency-budget ranking for `show next` / `take next`, including the cleanup-budget model used to promote blockers for valuable tickets.
+- Added JSON output for `edit`, `comment`, `move`, and `delete`, with structured errors for their non-interactive automation paths.
+
+### Fixed
+
+- Rejected `show board --json` with a structured error instead of mixing a human board view with JSON mode.
+- Kept `show next --json` from marking dependency-free ready tickets as blocked in the default fixture.
+- Kept `edit --json --depends add <missing>` on the structured `DEP_NOT_FOUND` error path.
+- Kept `move --json` multi-ticket failures from leaving a pending transaction marker.
+- Kept package metadata/version tests aligned with the current `VERSION` file.
+
 ## [2.2.1]
 
 ### Fixed

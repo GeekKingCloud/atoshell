@@ -272,7 +272,46 @@ load '../helpers/setup'
   [ "$status" -ne 0 ]
 }
 
-# ── 8. Command aliases ────────────────────────────────────────────────────────
+# ── 8. JSON output ───────────────────────────────────────────────────────────
+@test "move --json: outputs moved tickets as JSON array" {
+  run atoshell move 1 "In Progress" --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == \[* ]]
+  echo "$output" | jq -e 'length == 1 and .[0].id == 1 and .[0].status == "In Progress"' >/dev/null
+}
+
+@test "move -j: short flag outputs moved tickets as JSON array" {
+  run atoshell move 1 4 -j
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e 'length == 1 and .[0].id == 1 and .[0].status == "Done"' >/dev/null
+}
+
+@test "move --json: comma-separated IDs returns both moved tickets" {
+  run atoshell move 1,2 Done --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e 'length == 2 and (map(.id) == [1,2]) and all(.status == "Done")' >/dev/null
+}
+
+@test "move --json: missing ticket emits JSON error on stderr only" {
+  run_split atoshell move 999 Ready --json
+  assert_json_error_split "TICKET_NOT_FOUND"
+}
+
+@test "move --json: duplicate ID emits JSON error on stderr only" {
+  run_split atoshell move 1,1 Done --json
+  assert_json_error_split "INVALID_ARGUMENT"
+}
+
+@test "move --json: later missing ID does not leave transaction marker" {
+  run_split atoshell move 1,999 Done --json
+  assert_json_error_split "TICKET_NOT_FOUND"
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
+  jq -e '[.tickets[].id] == [1,2,3]' .atoshell/queue.json >/dev/null
+  jq -e '[.tickets[].id] == [5]' .atoshell/done.json >/dev/null
+}
+
+# ── 9. Command aliases ────────────────────────────────────────────────────────
 @test "move: ido alias works" {
   run atoshell ido 1 "In Progress"
   [ "$status" -eq 0 ]

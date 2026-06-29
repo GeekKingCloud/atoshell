@@ -196,6 +196,11 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   echo "$output" | jq . > /dev/null
 }
+@test "take next --json: default fixture takes dependency-free ticket" {
+  run atoshell take next --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.id == 1 and .status == "In Progress" and (has("_block_reason") | not)' >/dev/null
+}
 @test "take next: skips ready tickets blocked by in-progress deps" {
   printf '{"tickets":[
     {"id":1,"title":"Blocked ready","status":"Ready","priority":"P0","size":"S",

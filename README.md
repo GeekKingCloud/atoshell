@@ -154,8 +154,9 @@ atoshell add --import -              # same, reading from stdin
 
 `--json` is non-interactive. It cannot be combined with `--multi` / `--stream`
 or `--simple`. Single-ticket JSON creation requires both an explicit title and
-description (`--description`, `--desc`, `--body`, or `-b`); use `--import` for
-batch JSON creation where only `title` is required per item.
+description (`--description`, `--desc`, `--body`, or `-b`). Bulk import is the
+title-only easy path: use `--import` for batch JSON creation where only `title`
+is required per item and the remaining fields use project defaults.
 
 Atoshell import is a ticket intake surface, not a project context handoff. Imported
 descriptions may include links or notes that point to upstream planning material,
@@ -191,7 +192,7 @@ Show a single ticket in full, the next best ready ticket, or the kanban board.
 ```bash
 atoshell show 5
 atoshell show 5 --details   # include created/edited timestamps
-atoshell show 5 --json      # output as JSON (agent-friendly)
+atoshell show 5 --json      # output ticket as JSON (agent-friendly)
 atoshell show next          # best unblocked ready ticket with no assignee or assigned to you
 atoshell show next --json
 atoshell show board         # ASCII kanban (3 active columns)
@@ -205,7 +206,7 @@ atoshell show board --done  # same as --all for board
 | Flag         | Aliases  | Description                                             |
 |--------------|----------|---------------------------------------------------------|
 | `--details`  |          | Show created/edited timestamps for ticket and comments  |
-| `--json`     | `-j`     | Output ticket as JSON                                   |
+| `--json`     | `-j`     | Output ticket / next ticket as JSON                     |
 
 **Board view** (`show board`):
 
@@ -214,6 +215,10 @@ atoshell show board --done  # same as --all for board
 | `--full`  | `-f`     | Wrap board cells; continued lines are indented and end with `-`           |
 | `--all`   |          | Add Done column and show all tickets per column                           |
 | `--done`  |          | Same as `--all`                                                           |
+
+`show board` is human-readable only. Use `list --json` or a scoped
+`list <scope> --json` command when automation needs structured board or queue
+state.
 
 **Dependency Context** (`show <id>`):
 
@@ -249,6 +254,7 @@ atoshell edit 7 --status done
 atoshell edit 7 --disciplines add Backend --disciplines remove Frontend
 atoshell edit 7 --accountable add me,lyra --dependencies add 3,5
 atoshell edit 7 --priority P1 --as agent-1
+atoshell edit 7 --priority P1 --json
 ```
 
 Flags can be combined freely in a single command.
@@ -265,9 +271,11 @@ Flags can be combined freely in a single command.
 | `--accountable` / `--assign`, `-a`          | `add\|remove\|clear <vals>`  | Manage accountable; `me` = your name                  |
 | `--dependencies` / `--depends`, `-D`        | `add\|remove\|clear <vals>`  | Manage dependencies (comma-separated IDs)             |
 | `--as <agent-N\|number>`                    | `agent-N` or `N`             | Set `updated_by` to a numbered agent in non-TTY mode  |
+| `--json` / `-j`                             |                              | Output the changed ticket as JSON                     |
 
 Removing a valid discipline, accountable, or dependency that isn't on the ticket prints a warning but does not fail. Invalid dependency IDs still fail validation.
 `--as` is only allowed in non-interactive mode and only accepts `agent-N` or a bare positive number.
+`--json` cannot be combined with interactive `change` prompts for title or description.
 `fe` and `be` are accepted as shorthand for `Frontend` and `Backend` in discipline values.
 See [Disciplines](#disciplines) for the fixed labels and when to use each one.
 
@@ -284,11 +292,17 @@ When deleting multiple IDs, missing tickets are reported and skipped — the rem
 atoshell delete 5
 atoshell delete 3,7,12
 atoshell delete 3,7,12 --yes  # skip all confirmation prompts; auto-removes dangling dependencies
+atoshell delete 3,7,12 --yes --json
 ```
 
-| Flag     | Alias  | Description                                                   |
-|----------|--------|---------------------------------------------------------------|
-| `--yes`  | `-y`   | Skip confirmation prompts; auto-remove dangling dependencies  |
+| Flag      | Alias  | Description                                                   |
+|-----------|--------|---------------------------------------------------------------|
+| `--yes`   | `-y`   | Skip confirmation prompts; auto-remove dangling dependencies  |
+| `--json`  | `-j`   | Output a deletion summary object; requires `--yes`            |
+
+`delete --json` returns `{deleted, removed_dependencies}`. `deleted` is an array
+of removed ticket IDs. `removed_dependencies` contains objects with `ticket_id`
+and `dependency_id` for dependencies removed from surviving tickets.
 
 ---
 
@@ -358,20 +372,23 @@ atoshell move 3,7 in progress      # multi-word, no quotes needed
 atoshell move 8 3                  # column number — In Progress
 atoshell move 5 4                  # Done
 atoshell move 3,7,12 done --quiet
+atoshell move 3,7 done --json      # output moved tickets as a JSON array
 ```
 
-| Flag       | Alias  | Description      |
-|------------|--------|------------------|
-| `--quiet`  | `-q`   | Suppress output  |
+| Flag       | Alias  | Description                                |
+|------------|--------|--------------------------------------------|
+| `--quiet`  | `-q`   | Suppress output                            |
+| `--json`   | `-j`   | Output moved tickets as a JSON array       |
 
 Column numbers are shown in the board headers: `atoshell show board`
+`move --json` always returns an array, even when moving one ticket.
 
 ---
 
 ### `take [id|next]`
 Aliases: `toru`, `snatch`, `grab`
 
-Assign yourself to a ticket and move it to In Progress. With no argument, `take` defaults to `next` and takes the highest-priority ready ticket automatically.
+Assign yourself to a ticket and move it to In Progress. With no argument, `take` defaults to `next` and takes the best actionable ready ticket automatically.
 
 ```bash
 atoshell take 7
@@ -396,6 +413,7 @@ atoshell take next --as 1        # shorthand for agent-1
 
 **Notes:**
 - Filters only apply to `take next`; use fixed discipline labels from [Disciplines](#disciplines).
+- `next` means the best actionable ticket after dependency ordering and cleanup-budget rules, not blindly the highest-priority blocked ticket.
 - In a non-TTY context (agent/CI), assigns to `[agent]` instead of the current user. Use `--as <agent-N|number>` to assign to a specific numbered agent instead.
 - `--as` is only allowed in non-interactive mode and only accepts `agent-N` or a bare positive number. Omit `--as` to use `[agent]`.
 - Warns if the ticket is already In Progress — use `--force` to suppress.
@@ -416,9 +434,11 @@ atoshell comment 5 --as agent-1 "Root cause found"
 atoshell comment 5 edit 2 "Updated text"            # edit comment #2
 atoshell comment 5 edit 2                           # edit comment #2 interactively
 atoshell comment 5 delete 2                         # delete comment #2
+atoshell comment 5 "Progress note" --json           # output changed ticket as JSON
 ```
 
 `--as` is only allowed in non-interactive mode and only accepts `agent-N` or a bare positive number. Omit `--as` to use `[agent]`.
+`--json` / `-j` outputs the changed ticket after adding, editing, or deleting a comment. It requires inline comment text for add/edit and cannot be combined with interactive comment prompts.
 
 ---
 
@@ -624,12 +644,25 @@ SIZE_4="8"
 ```
 
 ### Dependency budgets
-Ready-ticket ranking can temporarily promote blockers for high-priority work. These budgets control how much dependency size can be "pulled forward."
+Ready-ticket ranking is built to find quick value without losing sight of
+important blocked work. Atoshell first orders Ready tickets by dependencies
+(a Kahn-style topological ranking), then applies priority, size, filters, and the
+cleanup budget.
+
+When a valuable ticket is blocked, its blocker tickets can be pulled forward
+ahead of less important work if the blocker cleanup fits the budget for that
+priority. If the blocked ticket would require too much cleanup, `show next` /
+`take next` skip that chain and return the next best actionable ticket instead.
 
 ```bash
 UNBLOCK_P0_BUDGET=""   # empty = infinite
 UNBLOCK_P1_BUDGET="3"
 ```
+
+Budget cost comes from size rank: `XS=0`, `S=1`, `M=2`, `L=3`, `XL=4`. P0
+blockers cost 0, because they are always considered worth clearing. For example,
+`UNBLOCK_P1_BUDGET="3"` can pull forward blocker tickets totaling one `L`, three
+`S`, or one `S` plus one `M` for a P1 ticket.
 
 ---
 

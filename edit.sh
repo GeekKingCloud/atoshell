@@ -18,6 +18,7 @@
 #   --dependencies|--dependency|--depends|-D [add|remove|clear] <vals>  Manage dependencies (default: add)
 #   --as <agent-N|number>                                               Attribute updated_by to a numbered agent in non-interactive mode
 # Options (Output):
+#   --json|-j                                                           Output changed ticket as JSON
 #   --help|-h                                                           Show 'edit' usage help and exit
 #
 # To add, edit or remove comments: atoshell comment <id> [options]
@@ -46,6 +47,8 @@ declare -a acct_ids=()
 declare -a dep_ids=()
 as=""
 any_changes=false
+json=false
+_cli_json_requested "$@" && json=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -53,21 +56,23 @@ while [[ $# -gt 0 ]]; do
       _show_help "${BASH_SOURCE[0]}"
       exit 0 ;;
     --title|-T)
-      [[ $# -lt 2 ]] && { printf 'Error: --title requires a value or "change".\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--title" '--title requires a value or "change".'
       val="$2"
       shift 2
       if [[ "$val" == "change" ]]; then
+        $json && _cli_error "$json" "INVALID_ARGUMENT" "--json cannot be combined with interactive title editing." "option" "--title"
         title_interactive=true
       else
-        [[ -z "$val" ]] && { printf 'Error: ticket title cannot be empty.\n' >&2; exit 1; }
+        [[ -z "$val" ]] && _cli_error "$json" "MISSING_ARGUMENT" "ticket title cannot be empty." "option" "--title"
         title="$(_sanitize_line "$val")"
       fi
       any_changes=true ;;
     --description|--desc|--body|-b)
-      [[ $# -lt 2 ]] && { printf 'Error: --description requires a value or "change".\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--description" '--description requires a value or "change".'
       val="$2"
       shift 2
       if [[ "$val" == "change" ]]; then
+        $json && _cli_error "$json" "INVALID_ARGUMENT" "--json cannot be combined with interactive description editing." "option" "--description"
         desc_interactive=true
       else
         description="$(_sanitize_text "$val")"
@@ -75,33 +80,33 @@ while [[ $# -gt 0 ]]; do
       desc_changed=true
       any_changes=true ;;
     --type|--kind|-t)
-      [[ $# -lt 2 ]] && { printf 'Error: --type requires a value.\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--type"
       val="$2"
       shift 2
-      type="$(_resolve_type "$val")"
+      type="$(_resolve_type "$val" "$json")"
       any_changes=true ;;
     --priority|-p)
-      [[ $# -lt 2 ]] && { printf 'Error: --priority requires a value.\n' >&2; exit 1; }
-      priority="$(_resolve_priority "$2")"
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--priority"
+      priority="$(_resolve_priority "$2" "$json")"
       shift 2
       any_changes=true ;;
     --size|-s)
-      [[ $# -lt 2 ]] && { printf 'Error: --size requires a value.\n' >&2; exit 1; }
-      size="$(_resolve_size "$2")"
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--size"
+      size="$(_resolve_size "$2" "$json")"
       shift 2
       any_changes=true ;;
     --status|-S)
       # Collect all remaining non-flag words as the status (supports "in progress" without quotes)
       shift  # consume the flag itself
-      [[ $# -eq 0 ]] && { printf 'Error: --status requires a value.\n' >&2; exit 1; }
+      [[ $# -eq 0 ]] && _cli_missing_value "$json" "--status"
       raw_status=""
       while [[ $# -gt 0 && "$1" != --* ]]; do
         raw_status="${raw_status:+$raw_status }$1"; shift
       done
-      status="$(_resolve_status "$raw_status")"
+      status="$(_resolve_status "$raw_status" "$json")"
       any_changes=true ;;
     --disciplines|--discipline|--dis|-d)
-      [[ $# -lt 2 ]] && { printf 'Error: --disciplines requires values.\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--disciplines" "--disciplines requires values."
       if [[ "$2" == "add" || "$2" == "remove" || "$2" == "rm" || "$2" == "clear" ]]; then
         sub="$2"; shift 2
       else
@@ -109,17 +114,17 @@ while [[ $# -gt 0 ]]; do
       fi
       case "$sub" in
         add)
-          [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --disciplines add requires values.\n' >&2; exit 1; }
-          _cli_require_csv_values false "--disciplines" "$1"
-          _cli_reject_empty_csv_fields false "--disciplines" "$1"
+          [[ $# -eq 0 || "$1" == --* ]] && _cli_missing_value "$json" "--disciplines" "--disciplines add requires values."
+          _cli_require_csv_values "$json" "--disciplines" "$1"
+          _cli_reject_empty_csv_fields "$json" "--disciplines" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           disc_action="add"
           for d in "${_v[@]}"; do disc_ids+=("${d// /}"); done
           any_changes=true ;;
         remove|rm)
-          [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --disciplines remove requires values.\n' >&2; exit 1; }
-          _cli_require_csv_values false "--disciplines" "$1"
-          _cli_reject_empty_csv_fields false "--disciplines" "$1"
+          [[ $# -eq 0 || "$1" == --* ]] && _cli_missing_value "$json" "--disciplines" "--disciplines remove requires values."
+          _cli_require_csv_values "$json" "--disciplines" "$1"
+          _cli_reject_empty_csv_fields "$json" "--disciplines" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           disc_action="remove"
           for d in "${_v[@]}"; do disc_ids+=("${d// /}"); done
@@ -128,25 +133,23 @@ while [[ $# -gt 0 ]]; do
           disc_action="clear"
           any_changes=true ;;
         *)
-          printf 'Error: --disciplines requires add|remove|clear, got "%s".\n' "$(_terminal_safe_line "$sub")" >&2
-          exit 1 ;;
+          _cli_error "$json" "INVALID_ARGUMENT" "--disciplines requires add|remove|clear, got \"$sub\"." "option" "--disciplines" "got" "$sub" ;;
       esac ;;
     --accountable|--assign|-a)
-      [[ $# -lt 2 ]] && { printf 'Error: --accountable requires values.\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--accountable" "--accountable requires values."
       if [[ "$2" == "add" || "$2" == "remove" || "$2" == "rm" || "$2" == "clear" ]]; then
         sub="$2"; shift 2
       else
         if [[ $# -ge 3 && "$3" != --* ]]; then
-          printf 'Error: --accountable requires add|remove|clear, got "%s".\n' "$(_terminal_safe_line "$2")" >&2
-          exit 1
+          _cli_error "$json" "INVALID_ARGUMENT" "--accountable requires add|remove|clear, got \"$2\"." "option" "--accountable" "got" "$2"
         fi
         sub="add"; shift
       fi
       case "$sub" in
         add)
-          [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --accountable add requires values.\n' >&2; exit 1; }
-          _cli_require_csv_values false "--accountable" "$1"
-          _cli_reject_empty_csv_fields false "--accountable" "$1"
+          [[ $# -eq 0 || "$1" == --* ]] && _cli_missing_value "$json" "--accountable" "--accountable add requires values."
+          _cli_require_csv_values "$json" "--accountable" "$1"
+          _cli_reject_empty_csv_fields "$json" "--accountable" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           acct_action="add"
           for u in "${_v[@]}"; do
@@ -157,9 +160,9 @@ while [[ $# -gt 0 ]]; do
           done
           any_changes=true ;;
         remove|rm)
-          [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --accountable remove requires values.\n' >&2; exit 1; }
-          _cli_require_csv_values false "--accountable" "$1"
-          _cli_reject_empty_csv_fields false "--accountable" "$1"
+          [[ $# -eq 0 || "$1" == --* ]] && _cli_missing_value "$json" "--accountable" "--accountable remove requires values."
+          _cli_require_csv_values "$json" "--accountable" "$1"
+          _cli_reject_empty_csv_fields "$json" "--accountable" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           acct_action="remove"
           for u in "${_v[@]}"; do
@@ -173,11 +176,10 @@ while [[ $# -gt 0 ]]; do
           acct_action="clear"
           any_changes=true ;;
         *)
-          printf 'Error: --accountable requires add|remove|clear, got "%s".\n' "$(_terminal_safe_line "$sub")" >&2
-          exit 1 ;;
+          _cli_error "$json" "INVALID_ARGUMENT" "--accountable requires add|remove|clear, got \"$sub\"." "option" "--accountable" "got" "$sub" ;;
       esac ;;
     --dependencies|--dependency|--depends|-D)
-      [[ $# -lt 2 ]] && { printf 'Error: --dependencies requires values.\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--dependencies" "--dependencies requires values."
       if [[ "$2" == "add" || "$2" == "remove" || "$2" == "rm" || "$2" == "clear" ]]; then
         sub="$2"; shift 2
       else
@@ -185,17 +187,17 @@ while [[ $# -gt 0 ]]; do
       fi
       case "$sub" in
         add)
-          [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --dependencies add requires values.\n' >&2; exit 1; }
-          _cli_require_csv_values false "--dependencies" "$1"
-          _cli_reject_empty_csv_fields false "--dependencies" "$1"
+          [[ $# -eq 0 || "$1" == --* ]] && _cli_missing_value "$json" "--dependencies" "--dependencies add requires values."
+          _cli_require_csv_values "$json" "--dependencies" "$1"
+          _cli_reject_empty_csv_fields "$json" "--dependencies" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           dep_action="add"
           dep_ids+=("${_v[@]}")
           any_changes=true ;;
         remove|rm)
-          [[ $# -eq 0 || "$1" == --* ]] && { printf 'Error: --dependencies remove requires values.\n' >&2; exit 1; }
-          _cli_require_csv_values false "--dependencies" "$1"
-          _cli_reject_empty_csv_fields false "--dependencies" "$1"
+          [[ $# -eq 0 || "$1" == --* ]] && _cli_missing_value "$json" "--dependencies" "--dependencies remove requires values."
+          _cli_require_csv_values "$json" "--dependencies" "$1"
+          _cli_reject_empty_csv_fields "$json" "--dependencies" "$1"
           IFS=',' read -ra _v <<< "$1"; shift
           dep_action="remove"
           dep_ids+=("${_v[@]}")
@@ -204,22 +206,20 @@ while [[ $# -gt 0 ]]; do
           dep_action="clear"
           any_changes=true ;;
         *)
-          printf 'Error: --dependencies requires add|remove|clear, got "%s".\n' "$(_terminal_safe_line "$sub")" >&2
-          exit 1 ;;
+          _cli_error "$json" "INVALID_ARGUMENT" "--dependencies requires add|remove|clear, got \"$sub\"." "option" "--dependencies" "got" "$sub" ;;
       esac ;;
     --as)
-      [[ $# -lt 2 ]] && { printf 'Error: --as requires a value.\n' >&2; exit 1; }
+      [[ $# -lt 2 ]] && _cli_missing_value "$json" "--as"
       as="$2"
       shift 2 ;;
+    --json|-j)
+      json=true
+      shift ;;
     -*)
-      printf 'Error: unknown flag: %s\n' "$(_terminal_safe_line "$1")" >&2
-      printf 'Run "atoshell help" for usage.\n' >&2
-      exit 1 ;;
+      _cli_error "$json" "UNKNOWN_OPTION" "unknown flag: $1" "option" "$1" ;;
     *)
       if [[ -n "$ticket_id" ]]; then
-        printf 'Error: unexpected argument: %s\n' "$(_terminal_safe_line "$1")" >&2
-        printf 'Usage: atoshell edit <id> [flags]\n' >&2
-        exit 1
+        _cli_error "$json" "UNEXPECTED_ARGUMENT" "unexpected argument: $1" "got" "$1"
       fi
       ticket_id="$1"
       shift ;;
@@ -227,16 +227,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── Resolve ticket ────────────────────────────────────────────────────────────
-[[ -z "$ticket_id" || "$ticket_id" == -* ]] && { printf 'Error: missing ticket ID.\nUsage: atoshell edit <id> [flags]\n' >&2; exit 1; }
-[[ ! "$ticket_id" =~ ^[0-9]+$ ]] && { printf 'Error: ticket ID must be a number, got "%s".\n' "$(_terminal_safe_line "$ticket_id")" >&2; exit 1; }
-src_file="$(_find_ticket_file "$ticket_id")"
+[[ -z "$ticket_id" || "$ticket_id" == -* ]] && _cli_error "$json" "MISSING_ARGUMENT" "missing ticket ID. Usage: atoshell edit <id> [flags]." "argument" "id"
+[[ ! "$ticket_id" =~ ^[0-9]+$ ]] && _cli_error "$json" "INVALID_TICKET_ID" "ticket ID must be a number." "got" "$ticket_id"
+src_file="$(_find_ticket_file "$ticket_id" 2>/dev/null)" || _cli_error "$json" "TICKET_NOT_FOUND" "ticket #$ticket_id not found." "id" "$ticket_id"
 
 $any_changes || {
-  printf 'Error: no changes specified. Run "atoshell help" for usage.\n' >&2
-  exit 1
+  _cli_error "$json" "MISSING_ARGUMENT" "no changes specified. Run \"atoshell help\" for usage." "argument" "change"
 }
 
-actor="$(_resolve_actor "$as")"
+actor="$(_resolve_actor "$as" "$json")"
 
 # ── Interactive prompts ───────────────────────────────────────────────────────
 if $title_interactive; then
@@ -255,13 +254,13 @@ if $desc_interactive; then
 fi
 
 # ── Pre-flight: validate and warn on removes ──────────────────────────────────
-printf '\n'
+$json || printf '\n'
 
 # Disciplines: validate names before the write lock; remove presence is checked
 # again under the lock so concurrent edits cannot make this decision stale.
 declare -a resolved_disc_ids=()
 for d in "${disc_ids[@]+"${disc_ids[@]}"}"; do
-  rd="$(_resolve_discipline "$d")"
+  rd="$(_resolve_discipline "$d" "$json")"
   resolved_disc_ids+=("$rd")
 done
 
@@ -277,8 +276,7 @@ done
 declare -a resolved_dep_ids=()
 for dep in "${dep_ids[@]+"${dep_ids[@]}"}"; do
   if ! [[ "$dep" =~ ^[0-9]+$ ]]; then
-    printf 'Error: dependency "%s" is not a valid ticket ID.\n' "$(_terminal_safe_line "$dep")" >&2
-    exit 1
+    _cli_error "$json" "INVALID_DEPENDENCY" "dependency \"$dep\" is not a valid ticket ID." "got" "$dep"
   fi
 
   resolved_dep_ids+=("$dep")
@@ -305,7 +303,7 @@ if [[ "$disc_action" == "remove" && "${#resolved_disc_ids[@]}" -gt 0 ]]; then
        | .disciplines | map(ascii_downcase) | any(. == $d)' \
       "$src_file" 2>/dev/null || echo "false")
     if [[ "$present" != "true" ]]; then
-      _outf '  [WARN] discipline "%s" not on ticket #%s — skipping.\n' "$d" "$ticket_id"
+      $json || _outf '  [WARN] discipline "%s" not on ticket #%s — skipping.\n' "$d" "$ticket_id"
     else
       present_disc_ids+=("$d")
     fi
@@ -321,7 +319,7 @@ if [[ "$acct_action" == "remove" && "${#resolved_acct_ids[@]}" -gt 0 ]]; then
        | .accountable | map(ascii_downcase) | any(. == $u)' \
       "$src_file" 2>/dev/null || echo "false")
     if [[ "$present" != "true" ]]; then
-      _outf '  [WARN] accountable "%s" not on ticket #%s — skipping.\n' "$(_terminal_safe_line "$u")" "$ticket_id"
+      $json || _outf '  [WARN] accountable "%s" not on ticket #%s — skipping.\n' "$(_terminal_safe_line "$u")" "$ticket_id"
     else
       present_acct_ids+=("$u")
     fi
@@ -331,14 +329,16 @@ fi
 
 if [[ "$dep_action" == "add" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
   for dep in "${resolved_dep_ids[@]}"; do
-    _find_ticket_file "$dep" > /dev/null
+    jq -s -e --arg id "$dep" '
+      any(.[]; any(.tickets[]?; (.id | tostring) == $id))
+    ' "$QUEUE_FILE" "$BACKLOG_FILE" "$DONE_FILE" >/dev/null 2>&1 ||
+      _cli_error "$json" "DEP_NOT_FOUND" "dependency #$dep not found." "dep" "$dep"
   done
   mapfile -t existing_dep_ids < <(jq -r --arg id "$ticket_id" \
     '.tickets[] | select(.id | tostring == $id) | .dependencies[]? | tostring' "$src_file")
   combined_dep_ids=("${existing_dep_ids[@]+"${existing_dep_ids[@]}"}" "${resolved_dep_ids[@]}")
   if ! _check_cyclic_deps "$ticket_id" "${combined_dep_ids[@]}"; then
-    printf 'Error: adding those dependencies would create a cycle involving ticket #%s.\n' "$ticket_id" >&2
-    exit 1
+    _cli_error "$json" "DEP_CYCLE" "adding those dependencies would create a cycle involving ticket #$ticket_id." "id" "$ticket_id"
   fi
 fi
 
@@ -350,7 +350,7 @@ if [[ "$dep_action" == "remove" && "${#resolved_dep_ids[@]}" -gt 0 ]]; then
        | .dependencies | any(. == $dep)' \
       "$src_file" 2>/dev/null || echo "false")
     if [[ "$present" != "true" ]]; then
-      _outf '  [WARN] dependency #%s not on ticket #%s — skipping.\n' "$dep" "$ticket_id"
+      $json || _outf '  [WARN] dependency #%s not on ticket #%s — skipping.\n' "$dep" "$ticket_id"
     else
       present_dep_ids+=("$dep")
     fi
@@ -470,6 +470,11 @@ if $applied_changes; then
     '(.tickets[] | select(.id | tostring == $id)) |= . + {updated_by: $by, updated_at: $ts}'
 fi
 _state_transaction_commit
+
+if $json; then
+  jq --arg id "$ticket_id" '.tickets[] | select(.id | tostring == $id)' "$src_file"
+  exit 0
+fi
 
 for msg in "${edit_messages[@]+"${edit_messages[@]}"}"; do
   _outln "$msg"

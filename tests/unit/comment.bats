@@ -243,6 +243,43 @@ load '../helpers/setup'
   [[ "$output" == *"updated"* ]]
 }
 
+# ── 8. JSON output ───────────────────────────────────────────────────────────
+@test "comment add --json: outputs changed ticket with new comment" {
+  run atoshell comment 1 "json note" --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == \{* ]]
+  echo "$output" | jq -e '.id == 1 and (.comments[-1].text == "json note")' >/dev/null
+}
+
+@test "comment add -j: short flag outputs changed ticket" {
+  run atoshell comment 1 "short json note" -j
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.id == 1 and (.comments[-1].text == "short json note")' >/dev/null
+}
+
+@test "comment edit --json: outputs changed ticket with updated comment" {
+  atoshell comment 1 "original text"
+  run atoshell comment 1 edit 1 "json updated" --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.id == 1 and (.comments[0].text == "json updated")' >/dev/null
+}
+
+@test "comment delete --json: outputs changed ticket after removal" {
+  run atoshell comment 2 delete 1 --json
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.id == 2 and (.comments | length == 0)' >/dev/null
+}
+
+@test "comment --json: missing inline add text emits JSON error on stderr only" {
+  run_split atoshell comment 1 --json
+  assert_json_error_split "MISSING_ARGUMENT"
+}
+
+@test "comment --json: missing comment position emits JSON error on stderr only" {
+  run_split atoshell comment 2 delete 99 --json
+  assert_json_error_split "COMMENT_NOT_FOUND"
+}
+
 # ── --help flag ──────────────────────────────────────────────────────────────
 @test "comment --help: exits 0" {
   run atoshell comment --help

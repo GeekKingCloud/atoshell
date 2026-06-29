@@ -111,31 +111,38 @@ _rank_ready_tickets() {
     ( [.[].id | tostring] ) as $ready_ids |
     .[] |
       (.priority // $pri_labels[2]) as $priority |
-      [
-        (.id | tostring),
-        $priority,
-        (label_rank($pri_labels; $priority; 2) | tostring),
-        (label_rank($size_labels; (.size // $size_labels[2]); 2) | tostring),
-        ((.dependencies // []) | map(tostring) |
+      {
+        id: (.id | tostring),
+        priority: $priority,
+        pri: (label_rank($pri_labels; $priority; 2) | tostring),
+        sz: (label_rank($size_labels; (.size // $size_labels[2]); 2) | tostring),
+        deps_ready: ((.dependencies // []) | map(tostring) |
          map(select(. as $d |
            ($sat | any(. == $d) | not) and
            ($ready_ids | any(. == $d))
          )) | join(" ")),
-        ((.dependencies // []) | map(tostring) |
+        deps_external: ((.dependencies // []) | map(tostring) |
          map(select(. as $d |
            ($sat | any(. == $d) | not) and
            ($ready_ids | any(. == $d) | not)
          )) | join(" "))
-      ] | join("\u001c")' <<< "$_all_ready_json")
+      } | @base64' <<< "$_all_ready_json")
 
   # Load annotated ticket data into bash associative arrays for fast lookup.
   # _eff_pri starts equal to _orig_pri; budget promotion may lower it later.
   declare -A _eff_pri _orig_pri _eff_sz _ticket_deps_ready _ticket_deps_external _ticket_priority _has_external_block
   declare -a _ticket_ids=()
 
-  # Use a non-whitespace delimiter so empty dep buckets stay in their columns.
-  local _id _priority _pri _sz _deps_ready _deps_external
-  while IFS=$'\034' read -r _id _priority _pri _sz _deps_ready _deps_external; do
+  # Decode per-row JSON so empty dependency buckets cannot shift columns.
+  local _row _id _priority _pri _sz _deps_ready _deps_external
+  while IFS= read -r _row; do
+    [[ -z "$_row" ]] && continue
+    _id=$(jq -rR '@base64d | fromjson | .id' <<< "$_row")
+    _priority=$(jq -rR '@base64d | fromjson | .priority' <<< "$_row")
+    _pri=$(jq -rR '@base64d | fromjson | .pri' <<< "$_row")
+    _sz=$(jq -rR '@base64d | fromjson | .sz' <<< "$_row")
+    _deps_ready=$(jq -rR '@base64d | fromjson | .deps_ready' <<< "$_row")
+    _deps_external=$(jq -rR '@base64d | fromjson | .deps_external' <<< "$_row")
     [[ -z "$_id" ]] && continue
     _ticket_ids+=("$_id")
     _ticket_priority["$_id"]="$_priority"
