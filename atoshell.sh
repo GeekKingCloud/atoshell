@@ -8,15 +8,15 @@
 # Commands (simple, japanese, cyberpunk):
 # Setup:
 #   install                                           — Install atoshell on this machine
-#   uninstall  | nuku       | purge                   — Remove atoshell and (optionally) directory
+#   uninstall  | nuku       | purge                   — Remove atoshell
 #   init       | kido       | boot                    — Initialise .atoshell/ in current directory
-#   update     | noru       | patch                   — Update atoshell to the latest version
+#   update     | noru       | patch                   — Update atoshell
 # Usage:
 #   add        | tasu       | fab     | new   | open  — Create a new ticket
 #   show       | yomu       | read                    — Show a ticket, next ready ticket, or kanban board
-#   edit       | henshu     | mod                     — Update ticket properties
+#   edit       | henshu     | mod                     — Edit ticket properties
 #   delete     | kesu       | wipe                    — Delete a ticket
-#   move       | ido        | shift                   — Move ticket(s) to a new status (workflow transition)
+#   move       | ido        | shift                   — Move ticket(s) to a new status (by name or column 1-4)
 #   take       | toru       | snatch  | grab          — Assign yourself to a ticket and move it to In Progress
 #   comment    | kaku       | mark    | note          — Add, edit, or remove comments
 #   list       | rekki      | draw                    — List tickets with optional filters
@@ -59,20 +59,20 @@ show_menu() {
   printf '|            atoshell — Menu                       |\n'
   printf '+--------------------------------------------------+\n'
   printf '\n'
-  printf '  0) init       — Initialise .atoshell/ in current directory\n'
-  printf '  1) add        — Create a new ticket\n'
-  printf '  2) show       — Show a ticket, next ready ticket, or kanban board\n'
-  printf '  3) edit       — Edit ticket properties\n'
-  printf '  4) delete     — Delete a ticket\n'
-  printf '  5) list       — List tickets with optional filters\n'
-  printf '  6) move       — Move ticket(s) to a new status (workflow transition)\n'
-  printf '  7) take       — Assign yourself to a ticket and move it to In Progress\n'
-  printf '  8) comment    — Add a comment to a ticket\n'
-  printf '  9) search     — Search ticket content\n'
-  printf ' 10) update     — Update atoshell\n'
-  printf ' 11) uninstall  — Remove atoshell\n'
-  printf ' 12) install    — Install atoshell on this machine\n'
-  printf ' 13) version    — Print the atoshell version\n'
+  printf '  0) init        — Initialise .atoshell/ in current directory\n'
+  printf '  1) add         — Create a new ticket\n'
+  printf '  2) show        — Show a ticket, next ready ticket, or kanban board\n'
+  printf '  3) edit        — Edit ticket properties\n'
+  printf '  4) delete      — Delete a ticket\n'
+  printf '  5) list        — List tickets with optional filters\n'
+  printf '  6) move        — Move ticket(s) to a new status (by name or column 1-4)\n'
+  printf '  7) take        — Assign yourself to a ticket and move it to In Progress\n'
+  printf '  8) comment     — Add, edit, or remove comments\n'
+  printf '  9) search      — Search ticket content\n'
+  printf '  10) update     — Update atoshell\n'
+  printf '  11) uninstall  — Remove atoshell\n'
+  printf '  12) install    — Install atoshell on this machine\n'
+  printf '  13) version    — Print the atoshell version\n'
   printf '\n'
   local choice
   _tty_read choice 'Choose a command [0-13]: '
@@ -131,22 +131,22 @@ case "$CMD" in
   help|--help|-h)
     printf 'Usage: atoshell <command> [options]\n\n'
     printf 'Commands:\n'
-    printf '  init       | kido    | boot                    — Initialise .atoshell/ in current directory\n'
-    printf '  add        | tasu    | fab     | new   | open  — Create a new ticket\n'
-    printf '  show       | yomu    | read                    — Show a ticket, next ready ticket, or kanban board\n'
-    printf '  edit       | henshu  | mod                     — Edit ticket properties\n'
-    printf '  delete     | kesu    | wipe                    — Delete a ticket\n'
-    printf '  list       | rekki   | draw                    — List tickets with optional filters\n'
-    printf '  move       | ido     | shift                   — Move ticket(s) to a new status (by name or column 1-4)\n'
-    printf '  take       | toru    | snatch  | grab          — Assign yourself to a ticket and move it to In Progress\n'
-    printf '  comment    | kaku    | mark    | note          — Add, edit, or remove comments\n'
-    printf '  search     | hiku    | crawl   | find          — Search ticket content\n'
-    printf '  update     | noru    | patch                   — Update atoshell\n'
-    printf '  uninstall  | nuku    | purge                   — Remove atoshell\n'
-    printf '  install                                        — Install atoshell on this machine\n'
-    printf '  version    | --version | -v                    — Print the atoshell version\n'
+    printf '  init       | kido       | boot                    — Initialise .atoshell/ in current directory\n'
+    printf '  add        | tasu       | fab     | new   | open  — Create a new ticket\n'
+    printf '  show       | yomu       | read                    — Show a ticket, next ready ticket, or kanban board\n'
+    printf '  edit       | henshu     | mod                     — Edit ticket properties\n'
+    printf '  delete     | kesu       | wipe                    — Delete a ticket\n'
+    printf '  list       | rekki      | draw                    — List tickets with optional filters\n'
+    printf '  move       | ido        | shift                   — Move ticket(s) to a new status (by name or column 1-4)\n'
+    printf '  take       | toru       | snatch  | grab          — Assign yourself to a ticket and move it to In Progress\n'
+    printf '  comment    | kaku       | mark    | note          — Add, edit, or remove comments\n'
+    printf '  search     | hiku       | crawl   | find          — Search ticket content\n'
+    printf '  update     | noru       | patch                   — Update atoshell\n'
+    printf '  uninstall  | nuku       | purge                   — Remove atoshell\n'
+    printf '  install                                           — Install atoshell on this machine\n'
+    printf '  version    | --version  | -v                      — Print the atoshell version\n'
     printf '\nGlobal flags:\n'
-    printf '  --quiet    | -q                                — Suppress decorative output (auto on non-TTY stdout)\n'
+    printf '  --quiet    | -q                                   — Suppress decorative output (auto on non-TTY stdout)\n'
     printf '\nRun without arguments for an interactive menu.\n'
     exit 0
     ;;

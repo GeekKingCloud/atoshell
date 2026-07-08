@@ -327,19 +327,24 @@ _copy_package_install() {
   ! grep -qF '.atoshell/archive.json' "$TEST_PROJECT/.gitignore"
   grep -qF '.atoshell/meta.json' "$TEST_PROJECT/.gitignore"
 }
-@test "update: Phase 2 appends missing config vars" {
+@test "update: Phase 2 rewrites sparse config from the canonical template" {
   printf '%s\n' \
     'STATUS_BACKLOG="Backlog"' \
     'STATUS_READY="Ready"' \
     'STATUS_IN_PROGRESS="In Progress"' \
     'STATUS_DONE="Done"' \
     'DISCIPLINES="Frontend,Backend"' \
+    'USERNAME="testuser"' \
     > "$TEST_PROJECT/.atoshell/config.env"
   run atoshell update
   [ "$status" -eq 0 ]
+  grep -qF '# .atoshell/config.env' "$TEST_PROJECT/.atoshell/config.env"
+  grep -qF '# ── Column names' "$TEST_PROJECT/.atoshell/config.env"
+  grep -qF 'USERNAME="testuser"' "$TEST_PROJECT/.atoshell/config.env"
   grep -qF 'TYPE_2="Task"' "$TEST_PROJECT/.atoshell/config.env"
   grep -qF 'UNBLOCK_P1_BUDGET="3"' "$TEST_PROJECT/.atoshell/config.env"
   ! grep -q 'DISCIPLINES=' "$TEST_PROJECT/.atoshell/config.env"
+  ! grep -q 'Added by atoshell update' "$TEST_PROJECT/.atoshell/config.env"
 }
 @test "update: Phase 2 config sync is idempotent across reruns" {
   printf '%s\n' \
@@ -355,6 +360,7 @@ _copy_package_install() {
   [ "$(grep -c '^TYPE_2=' "$TEST_PROJECT/.atoshell/config.env")" -eq 1 ]
   [ "$(grep -c '^UNBLOCK_P1_BUDGET=' "$TEST_PROJECT/.atoshell/config.env")" -eq 1 ]
   ! grep -q 'DISCIPLINES=' "$TEST_PROJECT/.atoshell/config.env"
+  ! grep -q 'Added by atoshell update' "$TEST_PROJECT/.atoshell/config.env"
 }
 @test "update: Phase 2 falls back to generated config defaults when the local template is unavailable" {
   local tdir; tdir="$(_minimal_update_path)"
@@ -370,10 +376,10 @@ _copy_package_install() {
     PATH="$tdir" \
     "$bash_path" -c 'cd "$1" && exec "$2" "$3" 2>&1' _ "$TEST_PROJECT" "$bash_path" "$ATOSHELL_REPO/update.sh"
   [ "$status" -eq 0 ]
-  grep -qF '# .atoshell/config.env' "$TEST_PROJECT/.atoshell/config.env"
-  grep -qF '# Controls created_at, updated_at, and ticket comment timestamps.' "$TEST_PROJECT/.atoshell/config.env"
-  grep -qF '# Use an IANA name such as "America/Mexico_City"' "$TEST_PROJECT/.atoshell/config.env"
   grep -qF 'STATUS_READY="Ready"' "$TEST_PROJECT/.atoshell/config.env"
+  grep -qF 'TYPE_2="Task"' "$TEST_PROJECT/.atoshell/config.env"
+  grep -qF 'ATOSHELL_TIMEZONE="UTC"' "$TEST_PROJECT/.atoshell/config.env"
+  grep -q '^#USERNAME=' "$TEST_PROJECT/.atoshell/config.env"
 }
 
 # ── 9. --help flag ────────────────────────────────────────────────────────────

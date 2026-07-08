@@ -86,6 +86,18 @@ _config_defaults() {
   cat "$_helpers_dir/config_vars.sh"
 }
 
+_config_known_keys_from_defaults() {
+  local line key known_keys=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^([A-Z0-9_]+)= ]] || continue
+    key="${BASH_REMATCH[1]}"
+    known_keys+=" $key "
+  done < <(_config_defaults)
+
+  printf '%s\n' "$known_keys"
+}
+
 _config_template() {
   local _helpers_dir
 
@@ -236,6 +248,42 @@ _config_parse_value_into() {
   printf -v "$__var_name" '%s' "$rhs"
 }
 
+_escape_env_value() {
+  printf '%s' "$1" | sed 's/[\\"]/\\&/g'
+}
+
+_format_config_assignment() {
+  local key="$1"
+  local value="$2"
+
+  printf '%s="%s"' "$key" "$(_escape_env_value "$value")"
+}
+
+_set_config_value_in_file() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local replacement tmp
+
+  replacement="$(_format_config_assignment "$key" "$value")"
+  tmp="${file}.tmp.$$"
+  awk -v key="$key" -v replacement="$replacement" '
+    BEGIN { replaced = 0 }
+    $0 ~ ("^[#[:space:]]*" key "[[:space:]]*=") {
+      print replacement
+      replaced = 1
+      next
+    }
+    { print }
+    END {
+      if (!replaced) {
+        print replacement
+      }
+    }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 # ── Timestamp formatting ─────────────────────────────────────────────────────
 _timestamp_format_date_tz() {
   local timezone="$1"
@@ -336,8 +384,9 @@ _remove_config_key() {
 }
 
 # Idempotent config file setup — mirrors _ensure_files for config.env.
-# Creates the file from a packaged template or generated fallback if missing/empty;
-# appends any vars not already present (even commented) when the file exists.
+# Creates the file from a packaged template or generated fallback if missing/empty,
+# then rewrites existing files through the canonical template while preserving
+# supported project values.
 _ensure_config() {
   local file="$1"
   local tmpl used_template=false
@@ -364,44 +413,34 @@ _ensure_config() {
   _sync_config_vars "$file"
 }
 
-# Inner: append missing vars from _config_defaults to an existing file.
-# If a var has an empty default and stdin is a TTY, prompts the user for a value.
+# Inner: rewrite through the canonical config template and reapply supported
+# project values. Unsupported stale keys are intentionally dropped.
 _sync_config_vars() {
   local file="$1"
-  local added=0 removed=0
-  local line key raw_val write_line entered
+  local tmp line trimmed key rhs value known_keys
 
-  if _remove_config_key "$file" "DISCIPLINES"; then
-    removed=1
-  fi
+  tmp="${file}.tmp.$$"
+  known_keys="$(_config_known_keys_from_defaults)"
+  _config_template > "$tmp"
 
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    [[ "$line" =~ ^[A-Z0-9_]+= ]] || continue
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    _config_trim_into trimmed "$line"
+    [[ -z "$trimmed" || "${trimmed:0:1}" == "#" ]] && continue
+    [[ "$trimmed" =~ ^([A-Z0-9_]+)[[:space:]]*=[[:space:]]*(.*)$ ]] || continue
+    key="${BASH_REMATCH[1]}"
+    rhs="${BASH_REMATCH[2]}"
 
-    key="${line%%=*}"
-    [[ -z "$key" ]] && continue
-
-    if ! _config_file_has_key "$file" "$key"; then
-      raw_val="${line#*=}"
-      raw_val="${raw_val#\"}"
-      raw_val="${raw_val%\"}"
-      write_line="$line"
-
-      if [[ -z "$raw_val" ]] && _stdin_is_tty; then
-        _tty_read entered "  New config var — $key (leave blank to skip): "
-        [[ -n "$entered" ]] && write_line="${key}=\"${entered}\""
-      fi
-
-      printf '\n# Added by atoshell update\n%s\n' "$write_line" >> "$file"
-      _outf '  [ADDED]    .atoshell/config.env: %s\n' "$key"
-      (( added++ )) || true
+    [[ "$known_keys" == *" $key "* ]] || continue
+    [[ "$key" != "DISCIPLINES" ]] || continue
+    _config_parse_value_into value "$rhs" || continue
+    if [[ "$key" == "USERNAME" && -z "$value" ]]; then
+      continue
     fi
-  done < <(_config_defaults)
+    _set_config_value_in_file "$tmp" "$key" "$value"
+  done < "$file"
 
-  if [[ "$added" -eq 0 && "$removed" -eq 0 ]]; then
-    _outf '  [OK]       .atoshell/config.env\n'
-  fi
+  mv "$tmp" "$file"
+  _outf '  [OK]       .atoshell/config.env\n'
 
   return 0
 }

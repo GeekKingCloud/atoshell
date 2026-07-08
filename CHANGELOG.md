@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.2.3]
+
+### Changed
+
+- Aligned README command guidance, command descriptions, help/menu text, and column spacing with the shared Atoshell style.
+- Tightened workflow shard names and package smoke behavior so CI output stays descriptive and failures preserve useful exit status.
+- Expanded the style guide with measured alignment rules for command menus, help output, dispatcher headers, README tables, and related agent docs.
+- Reworked project config sync to regenerate `config.env` from the canonical template, preserving supported values while restoring explanatory comments and dropping stale unsupported keys.
+
+### Tests
+
+- Pruned brittle docs-adjacent assertions while keeping functional coverage for help/menu rendering, package metadata, command contracts, and visible CLI output.
+- Consolidated removed-scope and discipline test coverage, refined command parity checks, and pinned drift-prone help/menu alignment rows.
+- Covered template-based config sync so updates no longer append sparse `Added by atoshell update` fragments.
+
 ## [2.2.2]
 
 ### Changed

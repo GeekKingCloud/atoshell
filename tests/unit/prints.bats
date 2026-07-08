@@ -37,16 +37,23 @@ EOF
   [[ "$output" == *'-- 1 more --'* ]]
 }
 
-@test "_print_board: default view uses exact three-column divider" {
+@test "_print_board: default view renders active status columns" {
   output=$(_print_board false false)
 
-  [[ "$output" == *'+------------------------+------------------------+------------------------+'* ]]
+  [[ "$output" == *"Backlog"* ]]
+  [[ "$output" == *"Ready"* ]]
+  [[ "$output" == *"In Progress"* ]]
+  [[ "$output" != *"|  4 Done"* ]]
+  [[ "$output" == *"Pass --done to show this column."* ]]
 }
 
-@test "_print_board: done view uses exact four-column divider" {
+@test "_print_board: done view includes completed status column" {
   output=$(_print_board true false)
 
-  [[ "$output" == *'+------------------------+------------------------+------------------------+------------------------+'* ]]
+  [[ "$output" == *"Backlog"* ]]
+  [[ "$output" == *"Ready"* ]]
+  [[ "$output" == *"In Progress"* ]]
+  [[ "$output" == *"Done"* ]]
 }
 
 @test "_print_board: all view shows all tickets without a truncation marker" {

@@ -101,10 +101,10 @@ jobs:
             os: ubuntu-latest
             manager: Bun
           - label: macOS
-            os: macos-latest
+            os: macos-26
             manager: npm
           - label: macOS
-            os: macos-latest
+            os: macos-26
             manager: Bun
           - label: Windows
             os: windows-latest
@@ -159,6 +159,7 @@ jobs:
       - name: npm global install smoke
         if: ${{ matrix.manager == 'npm' && matrix.label != 'Windows' }}
         run: |
+          set -o pipefail
           package_dir="$RUNNER_TEMP/atoshell-package"
           tarball="$(cat "$package_dir/tarball-path.txt")"
           npm_prefix="$RUNNER_TEMP/atoshell-npm-global"
@@ -175,10 +176,15 @@ jobs:
           cd "$project"
           atoshell init
           atoshell add "Package smoke" --body "Created from npm package smoke." --json | jq -e '.title == "Package smoke"'
+          atoshell update 2>&1 | tee /tmp/atoshell-npm-update.out
+          grep -q "package-manager install" /tmp/atoshell-npm-update.out
+          atoshell uninstall | tee /tmp/atoshell-npm-uninstall.out
+          grep -q "npm uninstall -g atoshell" /tmp/atoshell-npm-uninstall.out
 
       - name: Bun global install smoke
         if: ${{ matrix.manager == 'Bun' && matrix.label != 'Windows' }}
         run: |
+          set -o pipefail
           package_dir="$RUNNER_TEMP/atoshell-package"
           tarball="$(cat "$package_dir/tarball-path.txt")"
           export BUN_INSTALL="$RUNNER_TEMP/atoshell-bun-global"
@@ -196,6 +202,10 @@ jobs:
           cd "$project"
           atoshell init
           atoshell add "Package smoke" --body "Created from Bun package smoke." --json | jq -e '.title == "Package smoke"'
+          atoshell update 2>&1 | tee /tmp/atoshell-bun-update.out
+          grep -q "package-manager install" /tmp/atoshell-bun-update.out
+          atoshell uninstall | tee /tmp/atoshell-bun-uninstall.out
+          grep -q "bun remove -g atoshell" /tmp/atoshell-bun-uninstall.out
 
       - name: Windows package install smoke
         if: ${{ matrix.label == 'Windows' }}
@@ -256,6 +266,23 @@ jobs:
             $ticket = & $atoshell add 'Package smoke' --body 'Created from Windows package smoke.' --json | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             if ($ticket.title -ne 'Package smoke') { throw 'Package smoke ticket was not created.' }
+
+            $updateOutput = & $atoshell update 2>&1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (($updateOutput -join "`n") -notmatch 'package-manager install') {
+              throw 'Package update smoke did not report package-manager guidance.'
+            }
+
+            $uninstallOutput = & $atoshell uninstall
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ('${{ matrix.manager }}' -eq 'npm') {
+              $expectedUninstall = 'npm uninstall -g atoshell'
+            } else {
+              $expectedUninstall = 'bun remove -g atoshell'
+            }
+            if (($uninstallOutput -join "`n") -notmatch [regex]::Escape($expectedUninstall)) {
+              throw 'Package uninstall smoke did not report package-manager guidance.'
+            }
           } finally {
             Pop-Location
           }
@@ -271,7 +298,7 @@ jobs:
           - label: Linux
             os: ubuntu-latest
           - label: macOS
-            os: macos-latest
+            os: macos-26
           - label: Windows
             os: windows-latest
     steps:

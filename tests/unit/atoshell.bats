@@ -30,6 +30,12 @@ load '../helpers/setup'
   [[ "$output" == *"column 1-4"* ]]
   [[ "$output" != *"column 1-5"* ]]
 }
+@test "atoshell help and menu keep alias-column alignment" {
+  run atoshell help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"  version    | --version  | -v                      — Print the atoshell version"* ]]
+  [[ "$output" == *"  install                                           — Install atoshell on this machine"* ]]
+}
 @test "atoshell --help: exit code 0" {
   run atoshell --help
   [ "$status" -eq 0 ]

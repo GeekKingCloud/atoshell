@@ -147,7 +147,7 @@ topo_count=0
 # ── Scope → file, label, status ───────────────────────────────────────────────
 case "$scope" in
   backlog)
-    target_file="$BACKLOG_FILE" label="Backlog" ;;
+    target_file="$BACKLOG_FILE" label="$STATUS_BACKLOG" ;;
   done)
     target_file="$DONE_FILE" label="$STATUS_DONE"
     [[ -z "$status" ]] && status="$STATUS_DONE"

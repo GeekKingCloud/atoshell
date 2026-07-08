@@ -86,6 +86,21 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   [[ "$output" == *"Migrate to Postgres"* ]]
 }
+@test "list backlog: uses configured backlog label in heading" {
+  printf '%s\n' \
+    'STATUS_BACKLOG="Ideas"' \
+    'STATUS_READY="Ready"' \
+    'STATUS_IN_PROGRESS="In Progress"' \
+    'STATUS_DONE="Done"' \
+    > .atoshell/config.env
+
+  run atoshell list backlog
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"-- Ideas (1)"* ]]
+  [[ "$output" != *"-- Backlog (1)"* ]]
+  [[ "$output" == *"Migrate to Postgres"* ]]
+}
 @test "list 1: numeric backlog scope works" {
   run atoshell list 1
   [ "$status" -eq 0 ]
@@ -155,29 +170,12 @@ load '../helpers/setup'
   [ "$status" -eq 0 ]
   [[ "$output" == *"Add dark mode"* ]]
 }
-@test "list q: removed alias exits non-zero" {
-  run atoshell list q
-  [ "$status" -ne 0 ]
-}
-@test "list d: removed alias exits non-zero" {
-  run atoshell list d
-  [ "$status" -ne 0 ]
-}
-@test "list in-review: removed scope exits non-zero" {
-  run atoshell list in-review
-  [ "$status" -ne 0 ]
-}
-@test "list ir: removed alias exits non-zero" {
-  run atoshell list ir
-  [ "$status" -ne 0 ]
-}
-@test "list archive: removed scope exits non-zero" {
-  run atoshell list archive
-  [ "$status" -ne 0 ]
-}
-@test "list ar: removed alias exits non-zero" {
-  run atoshell list ar
-  [ "$status" -ne 0 ]
+@test "list: removed legacy scopes and aliases exit non-zero" {
+  local scope
+  for scope in q d in-review ir archive ar; do
+    run atoshell list "$scope"
+    [ "$status" -ne 0 ]
+  done
 }
 
 # ── 3. --status filter ────────────────────────────────────────────────────────

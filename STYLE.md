@@ -61,6 +61,20 @@ Every command script should:
 - In generated or example `config.env` files, align inline comments 2 spaces after the longest assignment in that contiguous block. Keep section banners and explanatory comments in the same order as the generated template.
 - Agent-facing docs should prefer canonical commands and task flows. Keep full alias inventories in user-facing docs unless an alias is directly required for an automation contract.
 
+### Applying the alignment rules
+
+Alignment drifts when it is edited row-by-row and checked by eye. Apply the rules above as a measured, whole-block, whole-surface operation:
+
+1. **Inventory every columnar surface before editing any of them.** For the command family that means the interactive menu `printf` block, the help `printf` block, the dispatcher header comment block, the `case` dispatch arms, and the matching tables and examples in `README.md`, `AGENTS.md`, and `tests/README.md`. They are one shared surface; a row changed in one place must be re-checked in all of them.
+2. **Unify wording before aligning.** A command's description must be word-for-word identical across the menu, help output, header comment, and README. Pick the most accurate wording once, propagate it everywhere, then align. Aligning strings that are about to change is wasted work.
+3. **Parse each contiguous block as a grid, not as padded strings.** Split every row into its cells — in the menu, `N) name` is one cell; in help and header listings, the canonical name and each alias position are separate cells; the `— description` is always the final cell. Blocks are scoped: a new block (menu vs help vs header) gets its own measured widths.
+4. **Compute column widths — never eyeball them.** A column starts exactly 2 spaces after the widest cell in the previous column across *all* rows of the block. Include the awkward rows when measuring: double-digit menu numbers, alias cells that are flags (`--version`), and rows with no aliases at all. When any cell changes width, recompute and rewrite the entire block — one longer item reflows every row.
+5. **Verify by counting characters, not by looking.** Confirm with byte-exact checks: `grep -F` for the exact expected row, or a diff of the full block against the intended layout. Terminal rendering can look aligned while being off by one, especially around `—` and `|`.
+6. **Compare the shipped CLI to the docs byte-for-byte.** Run `bash atoshell.sh help` and the menu, and diff the output against the `README.md` examples. Doc examples are exact transcripts of runtime output, not approximations.
+7. **Pin the drift-prone rows in tests.** Keep Bats assertions on the rows that historically fall off the grid: the widest row, the no-alias row (`install`), the flag-alias row (`version | --version | -v`), the first double-digit menu row, and the menu title banner. Extend these pins when adding commands or aliases.
+
+In Markdown tables, additionally escape any literal `|` inside a cell as `\|` so the cell does not split when rendered, and pad every cell so the pipes form straight vertical lines in the source.
+
 ### Module headers
 
 - Shared `funcs/*.sh` files should start with a one-line purpose comment after the shebang.

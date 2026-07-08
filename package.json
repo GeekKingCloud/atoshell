@@ -1,6 +1,6 @@
 {
   "name": "atoshell",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Agent-first terminal ticket tracking in plain JSON.",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/GeekKingCloud/atoshell#readme",

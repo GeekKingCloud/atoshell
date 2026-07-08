@@ -40,9 +40,9 @@ Run `atoshell` with no arguments for an interactive menu:
   3) edit        — Edit ticket properties
   4) delete      — Delete a ticket
   5) list        — List tickets with optional filters
-  6) move        — Move ticket(s) to a new status (workflow transition)
+  6) move        — Move ticket(s) to a new status (by name or column 1-4)
   7) take        — Assign yourself to a ticket and move it to In Progress
-  8) comment     — Add a comment to a ticket
+  8) comment     — Add, edit, or remove comments
   9) search      — Search ticket content
   10) update     — Update atoshell
   11) uninstall  — Remove atoshell
@@ -105,6 +105,17 @@ shell launchers and also writes `atoshell.cmd` and `ato.cmd` so PowerShell and
 
 ---
 
+## CLI Contract
+
+- `--quiet|-q` suppresses decorative output and is auto-enabled on non-TTY stdout.
+- `--json|-j` is command-local and only belongs after commands that document JSON output, such as `atoshell show 5 --json`.
+- Machine-readable errors for JSON-capable commands are written to stderr as JSON objects; stdout stays clean on failure.
+- Run `atoshell help`, `atoshell --help`, or `atoshell -h` for the command menu.
+- Run `atoshell version`, `atoshell --version`, or `atoshell -v` for the installed CLI version.
+- Run `atoshell` with no arguments for the interactive menu.
+
+---
+
 ## Commands
 
 ### `init`
@@ -134,21 +145,21 @@ atoshell add --import tickets.json   # import a batch from a JSON array file
 atoshell add --import -              # same, reading from stdin
 ```
 
-| Flag / Aliases                              | Description                                          | Default    |
-|---------------------------------------------|------------------------------------------------------|------------|
-| `--multi` / `--stream`                      | Keep adding tickets until title is left blank        |            |
-| `--simple`                                  | Title-only mode — skip all prompts, apply defaults   |            |
-| `--import <file>`                           | Import from a JSON array (`-` reads stdin)           |            |
-| `--description` / `--desc`, `--body`, `-b`  | Ticket description                                   | _(empty)_  |
-| `--type` / `--kind`, `-t`                   | Ticket type (`Bug`/`Feature`/`Task` or `0`–`2`)      | `Task`     |
-| `--priority` / `-p`                         | Priority level (`P0`–`P3` or `0`–`3`)                | `P2`       |
-| `--size` / `-s`                             | Size estimate (`XS`/`S`/`M`/`L`/`XL` or `0`–`4`)     | `M`        |
-| `--status` / `-S`                           | Status to assign (multi-word, no quotes needed)      | `Ready`    |
-| `--disciplines` / `--dis`, `-d`             | Fixed discipline tags (comma-separated)              |            |
-| `--accountable` / `--assign`, `-a`          | Accountable users (`me` = you, `agent` = `[agent]`)  |            |
-| `--dependencies` / `--depends`, `-D`        | Comma-separated dependency IDs                       |            |
-| `--as <agent-N\|number>`                    | Set `created_by` to a numbered agent in non-TTY mode |            |
-| `--json` / `-j`                             | Output created ticket as JSON (agent-friendly)       |            |
+| Flag / Aliases                              | Description                                           | Default    |
+|---------------------------------------------|-------------------------------------------------------|------------|
+| `--multi` / `--stream`                      | Keep adding tickets until title is left blank         |            |
+| `--simple`                                  | Title-only mode — skip all prompts, apply defaults    |            |
+| `--import <file>`                           | Import from a JSON array (`-` reads stdin)            |            |
+| `--description` / `--desc`, `--body`, `-b`  | Ticket description                                    | _(empty)_  |
+| `--type` / `--kind`, `-t`                   | Ticket type (`Bug`/`Feature`/`Task` or `0`–`2`)       | `Task`     |
+| `--priority` / `-p`                         | Priority level (`P0`–`P3` or `0`–`3`)                 | `P2`       |
+| `--size` / `-s`                             | Size estimate (`XS`/`S`/`M`/`L`/`XL` or `0`–`4`)      | `M`        |
+| `--status` / `-S`                           | Status to assign (multi-word, no quotes needed)       | `Ready`    |
+| `--disciplines` / `--dis`, `-d`             | Fixed discipline tags (comma-separated)               |            |
+| `--accountable` / `--assign`, `-a`          | Accountable users (`me` = you, `agent` = `[agent]`)   |            |
+| `--dependencies` / `--depends`, `-D`        | Comma-separated dependency IDs                        |            |
+| `--as <agent-N\|number>`                    | Set `created_by` to a numbered agent in non-TTY mode  |            |
+| `--json` / `-j`                             | Output created ticket as JSON (agent-friendly)        |            |
 
 `--as` is only allowed in non-interactive mode and only accepts `agent-N` or a bare positive number. Omit `--as` to use the default non-TTY `[agent]` actor.
 
@@ -210,11 +221,11 @@ atoshell show board --done  # same as --all for board
 
 **Board view** (`show board`):
 
-| Flag      | Aliases  | Description                                                               |
-|-----------|----------|---------------------------------------------------------------------------|
-| `--full`  | `-f`     | Wrap board cells; continued lines are indented and end with `-`           |
-| `--all`   |          | Add Done column and show all tickets per column                           |
-| `--done`  |          | Same as `--all`                                                           |
+| Flag      | Aliases  | Description                                                      |
+|-----------|----------|------------------------------------------------------------------|
+| `--full`  | `-f`     | Wrap board cells; continued lines are indented and end with `-`  |
+| `--all`   |          | Add Done column and show all tickets per column                  |
+| `--done`  |          | Same as `--all`                                                  |
 
 `show board` is human-readable only. Use `list --json` or a scoped
 `list <scope> --json` command when automation needs structured board or queue
@@ -332,16 +343,16 @@ atoshell list --status done                      # filter by status — no scope
 - Other: `blockers` / `deps`
 
 **Filters:**
-| Flag                                        | Example                            |
-|---------------------------------------------|------------------------------------|
-| `--mine` / `--me` / `-M`                    | `list --mine`                      |
-| `--accountable <user>` / `--assign` / `-a`  | `list --accountable lyra`          |
-| `--agent` / `-A`                            | `list --agent`                     |
-| `--priority <values>` / `-p`                | `list --priority P0,P1` or `0,1`   |
-| `--size <values>` / `-s`                    | `list --size S,M` or `1,2`         |
-| `--type <values>` / `-t`                    | `list --type Bug,Feature` or `0,1` |
-| `--disciplines <values>` / `-d`             | `list --disciplines Backend`       |
-| `--status <value>` / `-S`                   | `list --status in progress`        |
+| Flag                                        | Example                             |
+|---------------------------------------------|-------------------------------------|
+| `--mine` / `--me` / `-M`                    | `list --mine`                       |
+| `--accountable <user>` / `--assign` / `-a`  | `list --accountable lyra`           |
+| `--agent` / `-A`                            | `list --agent`                      |
+| `--priority <values>` / `-p`                | `list --priority P0,P1` or `0,1`    |
+| `--size <values>` / `-s`                    | `list --size S,M` or `1,2`          |
+| `--type <values>` / `-t`                    | `list --type Bug,Feature` or `0,1`  |
+| `--disciplines <values>` / `-d`             | `list --disciplines Backend`        |
+| `--status <value>` / `-S`                   | `list --status in progress`         |
 
 Filters can be combined freely: `atoshell list --mine --disciplines Backend --priority P0`
 
@@ -375,10 +386,10 @@ atoshell move 3,7,12 done --quiet
 atoshell move 3,7 done --json      # output moved tickets as a JSON array
 ```
 
-| Flag       | Alias  | Description                                |
-|------------|--------|--------------------------------------------|
-| `--quiet`  | `-q`   | Suppress output                            |
-| `--json`   | `-j`   | Output moved tickets as a JSON array       |
+| Flag       | Alias  | Description                           |
+|------------|--------|---------------------------------------|
+| `--quiet`  | `-q`   | Suppress output                       |
+| `--json`   | `-j`   | Output moved tickets as a JSON array  |
 
 Column numbers are shown in the board headers: `atoshell show board`
 `move --json` always returns an array, even when moving one ticket.
@@ -401,15 +412,15 @@ atoshell take next --as agent-1  # orchestrator: claim on behalf of a numbered s
 atoshell take next --as 1        # shorthand for agent-1
 ```
 
-| Flag / Aliases                           | Description                                                                      |
-|------------------------------------------|----------------------------------------------------------------------------------|
-| `--as <agent-N\|number>`                 | Assign to a numbered agent (e.g. `agent-1` or `1`) instead of the default actor  |
-| `--type <values>` / `--kind` / `-t`      | Filter `next` by ticket type (`Bug`, `Feature`, `Task` or `0`-`2`)               |
-| `--priority <values>` / `-p`             | Filter `next` by priority (`P0`-`P3` or `0`-`3`, comma-separated)                |
-| `--size <values>` / `-s`                 | Filter `next` by size (`XS`-`XL` or `0`-`4`, comma-separated)                    |
-| `--disciplines <values>` | `--dis`, `-d` | Filter `next` by fixed discipline tags                                           |
-| `--json` / `-j`                          | Output ticket as JSON after taking                                               |
-| `--force` / `-F`                         | Override done guard — assign even if Done (`id` only)                            |
+| Flag / Aliases                            | Description                                                                      |
+|-------------------------------------------|----------------------------------------------------------------------------------|
+| `--as <agent-N\|number>`                  | Assign to a numbered agent (e.g. `agent-1` or `1`) instead of the default actor  |
+| `--type <values>` / `--kind` / `-t`       | Filter `next` by ticket type (`Bug`, `Feature`, `Task` or `0`-`2`)               |
+| `--priority <values>` / `-p`              | Filter `next` by priority (`P0`-`P3` or `0`-`3`, comma-separated)                |
+| `--size <values>` / `-s`                  | Filter `next` by size (`XS`-`XL` or `0`-`4`, comma-separated)                    |
+| `--disciplines <values>` / `--dis`, `-d`  | Filter `next` by fixed discipline tags                                           |
+| `--json` / `-j`                           | Output ticket as JSON after taking                                               |
+| `--force` / `-F`                          | Override done guard — assign even if Done (`id` only)                            |
 
 **Notes:**
 - Filters only apply to `take next`; use fixed discipline labels from [Disciplines](#disciplines).
@@ -459,6 +470,20 @@ atoshell search "login" --json  # output as JSON array (agent-friendly)
 
 ---
 
+### `install`
+
+Install the CLI locally. `install` has no subcommand aliases.
+
+```bash
+atoshell install
+```
+
+| Flag  | Aliases  | Description       |
+|-------|----------|-------------------|
+|       |          | No command flags  |
+
+---
+
 ### `update`
 Aliases: `noru`, `patch`
 
@@ -476,7 +501,21 @@ atoshell update --walk  # search parent directories for a project to update
 
 ---
 
+### `help`
+Aliases: `--help`, `-h`
+
+Print the command menu and global flag summary.
+
+```bash
+atoshell help
+atoshell --help
+atoshell -h
+```
+
+---
+
 ### `version`
+Aliases: `--version`, `-v`
 
 Print the atoshell CLI version from the checked-in `VERSION` file.
 
@@ -501,7 +540,7 @@ atoshell uninstall
 
 ---
 
-## Data storage
+## Project State
 Each project gets a `.atoshell/` directory:
 
 ```
@@ -558,7 +597,7 @@ ISO-8601 offset such as `2026-04-23T23:00:00-06:00`.
 
 These fields are computed at read time and are not stored on disk.
 
-## Configuration
+## Config
 Each project's `.atoshell/config.env` controls how atoshell behaves for that project.
 
 ### Username

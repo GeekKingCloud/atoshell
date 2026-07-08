@@ -31,24 +31,33 @@ _cat_only_path() {
   _ensure_config "$CONFIG_FILE"
   [ -f "$CONFIG_FILE" ]
   grep -qF 'STATUS_READY="Ready"' "$CONFIG_FILE"
-  grep -qF '#USERNAME="Your Name"' "$CONFIG_FILE"
+  grep -q '^#USERNAME=' "$CONFIG_FILE"
 }
 @test "_config_template: matches packaged example config" {
   local generated="$BATS_TEST_TMPDIR/generated-config.env"
+  local generated_keys="$BATS_TEST_TMPDIR/generated-config.keys"
+  local example_keys="$BATS_TEST_TMPDIR/example-config.keys"
   _config_template > "$generated"
 
-  diff -u "$ATOSHELL_REPO/.atoshell.example/config.env" "$generated"
+  grep -vE '^[[:space:]]*(#|$)' "$ATOSHELL_REPO/.atoshell.example/config.env" > "$example_keys"
+  grep -vE '^[[:space:]]*(#|$)' "$generated" > "$generated_keys"
+  diff -u "$example_keys" "$generated_keys"
 }
 
-@test "_sync_config_vars: appends missing keys to a sparse config" {
+@test "_sync_config_vars: rewrites sparse config through the canonical template" {
   printf '%s\n' \
     'STATUS_BACKLOG="Backlog"' \
+    'USERNAME="testuser"' \
     > "$CONFIG_FILE"
 
   _sync_config_vars "$CONFIG_FILE"
 
+  grep -qF '# .atoshell/config.env' "$CONFIG_FILE"
+  grep -qF '# ── Column names' "$CONFIG_FILE"
   grep -qF 'STATUS_READY="Ready"' "$CONFIG_FILE"
+  grep -qF 'USERNAME="testuser"' "$CONFIG_FILE"
   grep -qF 'TYPE_2="Task"' "$CONFIG_FILE"
+  ! grep -q 'Added by atoshell update' "$CONFIG_FILE"
 }
 
 @test "_sync_config_vars: removes stale DISCIPLINES config key" {
@@ -67,6 +76,7 @@ _cat_only_path() {
 @test "_sync_config_vars: repeated runs do not duplicate appended keys" {
   printf '%s\n' \
     'STATUS_BACKLOG="Backlog"' \
+    'ATOSHELL_TIMEZONE="America/Mexico_City"' \
     > "$CONFIG_FILE"
 
   _sync_config_vars "$CONFIG_FILE"
@@ -74,6 +84,9 @@ _cat_only_path() {
 
   [ "$(grep -c '^STATUS_READY=' "$CONFIG_FILE")" -eq 1 ]
   [ "$(grep -c '^TYPE_2=' "$CONFIG_FILE")" -eq 1 ]
+  [ "$(grep -c '^ATOSHELL_TIMEZONE=' "$CONFIG_FILE")" -eq 1 ]
+  grep -qF 'ATOSHELL_TIMEZONE="America/Mexico_City"' "$CONFIG_FILE"
+  ! grep -q 'Added by atoshell update' "$CONFIG_FILE"
 }
 
 @test "_sync_config_vars: commented keys count as existing" {
@@ -88,14 +101,15 @@ _cat_only_path() {
   [ "$(grep -c '^USERNAME=' "$CONFIG_FILE")" -eq 0 ]
 }
 
-@test "_sync_config_vars: non-TTY mode keeps the empty default" {
+@test "_sync_config_vars: non-TTY mode keeps the username placeholder commented" {
   printf '%s\n' \
     'STATUS_BACKLOG="Backlog"' \
     > "$CONFIG_FILE"
 
   _sync_config_vars "$CONFIG_FILE"
 
-  grep -qF 'USERNAME=""' "$CONFIG_FILE"
+  grep -qF '#USERNAME="Your Name"' "$CONFIG_FILE"
+  [ "$(grep -c '^USERNAME=' "$CONFIG_FILE")" -eq 0 ]
 }
 
 @test "_ensure_config: fallback without packaged template uses generated defaults" {
@@ -113,10 +127,10 @@ _cat_only_path() {
   export PATH="$old_path"
   export ATOSHELL_DIR="$ATOSHELL_REPO"
   [ -f "$CONFIG_FILE" ]
-  grep -qF '# .atoshell/config.env' "$CONFIG_FILE"
-  grep -qF '# Controls created_at, updated_at, and ticket comment timestamps.' "$CONFIG_FILE"
-  grep -qF '# Use an IANA name such as "America/Mexico_City"' "$CONFIG_FILE"
   grep -qF 'STATUS_READY="Ready"' "$CONFIG_FILE"
+  grep -qF 'TYPE_2="Task"' "$CONFIG_FILE"
+  grep -qF 'ATOSHELL_TIMEZONE="UTC"' "$CONFIG_FILE"
+  grep -q '^#USERNAME=' "$CONFIG_FILE"
 }
 
 @test "_load_config: warns when USERNAME is set to me" {

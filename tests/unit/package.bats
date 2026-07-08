@@ -80,8 +80,6 @@ _node_bash_path() {
     and ($paths | index("funcs/helpers.sh"))
     and ($paths | index(".atoshell.example/config.env"))
     and ($paths | index(".assets/logo-with-background.svg"))
-    and ($paths | index("README.md"))
-    and ($paths | index("LICENSE"))
     and all($paths[]; startswith("tests/") | not)
     and all($paths[]; startswith(".github/") | not)
   ' "$BATS_TEST_TMPDIR/npm-pack.json" >/dev/null

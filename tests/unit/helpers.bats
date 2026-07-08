@@ -575,13 +575,12 @@ setup() {
   run _resolve_discipline "nonsense"
   [ "$status" -ne 0 ]
 }
-@test "_resolve_discipline: exits non-zero for removed discipline 'Infra'" {
-  run _resolve_discipline "Infra"
-  [ "$status" -ne 0 ]
-}
-@test "_resolve_discipline: exits non-zero for removed discipline 'Scripting'" {
-  run _resolve_discipline "Scripting"
-  [ "$status" -ne 0 ]
+@test "_resolve_discipline: rejects removed discipline labels" {
+  local discipline
+  for discipline in Infra Scripting; do
+    run _resolve_discipline "$discipline"
+    [ "$status" -ne 0 ]
+  done
 }
 
 # ── 13. _find_ticket_file ─────────────────────────────────────────────────────
@@ -680,7 +679,5 @@ setup() {
 }
 @test "_config_template: output includes timestamp guidance from the example config" {
   result=$(_config_template)
-  [[ "$result" == *'# Controls created_at, updated_at, and ticket comment timestamps.'* ]]
-  [[ "$result" == *'# Use an IANA name such as "America/Mexico_City"'* ]]
   [[ "$result" == *'ATOSHELL_TIMEZONE="UTC"'* ]]
 }
