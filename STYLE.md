@@ -38,10 +38,11 @@ Every command script should:
 2. Source `funcs/helpers.sh`.
 3. Source other shared modules only when needed.
 4. Call `_setup` before writing project state, or `_setup_readonly` for read-only commands. Read-only setup must stay lock-free on the normal path, but must recover any visible lock or transaction journal before reading.
-5. Use banner comments for major sections.
-6. Keep the file header in this order: title line, `Usage:`, optional `Aliases:`, then examples/options blocks when needed.
-7. Keep command files in narrative order: setup, initial parsed-state variables, flag parsing, validation/pre-flight checks, helper functions local to the command, the main read/write operation, then JSON/human output.
-8. Keep dispatchers in narrative order: setup, helper functions, global-flag stripping, command normalization, help/version/menu branches, then final `exec` dispatch.
+5. Pass large ticket or queue payloads to `jq` through files such as `--slurpfile`; never place complete ticket objects or unbounded comment history in process arguments.
+6. Use banner comments for major sections.
+7. Keep the file header in this order: title line, `Usage:`, optional `Aliases:`, then examples/options blocks when needed.
+8. Keep command files in narrative order: setup, initial parsed-state variables, flag parsing, validation/pre-flight checks, helper functions local to the command, the main read/write operation, then JSON/human output.
+9. Keep dispatchers in narrative order: setup, helper functions, global-flag stripping, command normalization, help/version/menu branches, then final `exec` dispatch.
 
 ### Layout and alignment
 

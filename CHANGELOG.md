@@ -8,12 +8,14 @@
 - Tightened workflow shard names and package smoke behavior so CI output stays descriptive and failures preserve useful exit status.
 - Expanded the style guide with measured alignment rules for command menus, help output, dispatcher headers, README tables, and related agent docs.
 - Reworked project config sync to regenerate `config.env` from the canonical template, preserving supported values while restoring explanatory comments and dropping stale unsupported keys.
+- Changed cross-file ticket moves to load ticket payloads from temporary JSON files instead of process arguments, preventing large tickets or long comment histories from exceeding Windows command-line limits.
 
 ### Tests
 
 - Pruned brittle docs-adjacent assertions while keeping functional coverage for help/menu rendering, package metadata, command contracts, and visible CLI output.
 - Consolidated removed-scope and discipline test coverage, refined command parity checks, and pinned drift-prone help/menu alignment rows.
 - Covered template-based config sync so updates no longer append sparse `Added by atoshell update` fragments.
+- Covered cross-file moves for ticket payloads larger than the platform argument limit while preserving transaction cleanup and ticket metadata.
 
 ## [2.2.2]
 

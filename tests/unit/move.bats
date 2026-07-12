@@ -69,6 +69,20 @@ load '../helpers/setup'
   count=$(jq '[.tickets[] | select(.id==1)] | length' .atoshell/done.json)
   [ "$count" -eq 1 ]
 }
+@test "move: cross-file move supports tickets larger than the platform argument limit" {
+  jq '(.tickets[] | select(.id == 1).comments) = [{author:"tester", text:("x" * 40000), created_at:"2026-01-01T00:00:00Z"}]' \
+    .atoshell/queue.json > .atoshell/queue.large.json
+  mv .atoshell/queue.large.json .atoshell/queue.json
+
+  run atoshell move 1 "Done" --as agent-1
+
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.tickets[] | select(.id == 1) | .status' .atoshell/done.json)" = "Done" ]
+  [ "$(jq -r '.tickets[] | select(.id == 1) | .updated_by' .atoshell/done.json)" = "agent-1" ]
+  [ "$(jq -r '.tickets[] | select(.id == 1) | .comments[0].text | length' .atoshell/done.json)" -eq 40000 ]
+  [ "$(jq '[.tickets[] | select(.id == 1)] | length' .atoshell/queue.json)" -eq 0 ]
+  [ ! -e .atoshell/.transaction ]
+}
 @test "move: backlog → queue removes ticket from backlog" {
   run atoshell move 4 "In Progress"
   [ "$status" -eq 0 ]
