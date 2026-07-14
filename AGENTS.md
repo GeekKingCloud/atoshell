@@ -379,6 +379,13 @@ For non-code dependencies (research, design decisions) the same rule applies —
 
 ## Testing on Windows
 
+Local verification must stay proportional to the change:
+
+- Run static checks plus the smallest test file or exact `--filter` that directly covers the behavior changed.
+- Do not run unrelated test files or the full local suite by default. GitHub Actions owns full-suite coverage.
+- Broaden local coverage only when a focused failure indicates wider impact, shared test infrastructure changed, or a release check was explicitly requested.
+- Never ignore a focused failure. Fix it and rerun the same focused check before committing.
+
 On Windows, run Bats suites from the repo root with `bats.cmd` so the Bash-based test harness goes through the local Git Bash / MSYS install instead of relying on shell discovery.
 
 If `bash.exe`, `bats.cmd`, or an installed `.cmd` launcher fails before the suite or command starts with Git Bash / MSYS errors such as `Win32 error 5`, `CreateFileMapping`, or `couldn't create signal pipe`, treat that as a sandbox/process-isolation issue rather than an Atoshell, adapter, or repo test failure. Confirm with the smallest raw Git Bash smoke check:
@@ -395,13 +402,7 @@ Do not start verification with giant combined Bats suites on Windows. They often
 
 When a coding agent or orchestrator needs to call `atoshell ... --as ...`, make the process genuinely non-interactive by giving the command non-TTY stdin, for example by running it from a background/non-interactive process or redirecting stdin from null in the caller.
 
-Final confidence pass:
-
-```bat
-bats.cmd --print-output-on-failure tests/unit
-```
-
-For quick CLI checks outside the full suite, prefer explicit Git Bash commands against the shipped entrypoints:
+For focused CLI checks, prefer explicit Git Bash commands against the shipped entrypoints:
 
 ```powershell
 & 'C:\Program Files\Git\bin\bash.exe' -lc "cd '/c/.../atoshell' && ./atoshell.sh help"
