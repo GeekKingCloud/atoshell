@@ -68,17 +68,17 @@ All structured output uses `--json` / `-j`. Prefer it over parsing human output.
 `list <scope> --json` command when automation needs structured board or queue
 state.
 
-| Goal                             | Command                               |
-|----------------------------------|---------------------------------------|
-| Best available ticket            | `atoshell show next --json`           |
-| Claim it and get full details    | `atoshell take next --json`           |
-| Inspect a specific ticket        | `atoshell show <id> --json`           |
-| Active queue                     | `atoshell list --json`                |
-| Filter by status                 | `atoshell list --status done --json`  |
-| Backlog                          | `atoshell list backlog --json`        |
-| Your current assignments         | `atoshell list --agent --json`        |
-| Tickets blocked by dependencies  | `atoshell list blockers --json`       |
-| Full-text search                 | `atoshell search "<query>" --json`    |
+| Goal                            | Command                              |
+|---------------------------------|--------------------------------------|
+| Best available ticket           | `atoshell show next --json`          |
+| Claim it and get full details   | `atoshell take next --json`          |
+| Inspect a specific ticket       | `atoshell show <id> --json`          |
+| Active queue                    | `atoshell list --json`               |
+| Filter by status                | `atoshell list --status done --json` |
+| Backlog                         | `atoshell list backlog --json`       |
+| Your current assignments        | `atoshell list --agent --json`       |
+| Tickets blocked by dependencies | `atoshell list blockers --json`      |
+| Full-text search                | `atoshell search "<query>" --json`   |
 
 `list` defaults to the active queue (`Ready` + `In Progress`). Explicit list
 scopes are `queue`, `backlog`/`bl`/`1`, `ready`/`rd`/`2`,
@@ -131,11 +131,11 @@ external artifacts.
 }
 ```
 
-| Field         | Meaning                                                 |
-|---------------|---------------------------------------------------------|
-| `blocked`     | `true` if any dependency is not yet Done                |
-| `blocked_by`  | Dependencies that are still open (not Done)             |
-| `blocking`    | Non-Done tickets that list this ticket as a dependency  |
+| Field        | Meaning                                                |
+|--------------|--------------------------------------------------------|
+| `blocked`    | `true` if any dependency is not yet Done               |
+| `blocked_by` | Dependencies that are still open (not Done)            |
+| `blocking`   | Non-Done tickets that list this ticket as a dependency |
 
 These are also shown in the human-readable `show <id>` output. The same satisfied-dependency rule applies as in the ranking algorithm: only `Done` counts as resolved.
 
@@ -152,11 +152,11 @@ atoshell take next --type Bug --size XS,S --json
 
 `--priority`, `--size`, and `--type` also accept numeric indices as shorthand:
 
-| Flag          | Indices  | Labels              |
-|---------------|----------|---------------------|
-| `--priority`  | `0`–`3`  | P0, P1, P2, P3      |
-| `--size`      | `0`–`4`  | XS, S, M, L, XL     |
-| `--type`      | `0`–`2`  | Bug, Feature, Task  |
+| Flag         | Indices | Labels             |
+|--------------|---------|--------------------|
+| `--priority` | `0`–`3` | P0, P1, P2, P3     |
+| `--size`     | `0`–`4` | XS, S, M, L, XL    |
+| `--type`     | `0`–`2` | Bug, Feature, Task |
 
 This applies to `add`, `edit`, `list`, and `take` filters.
 
@@ -172,18 +172,18 @@ Filters can be combined freely. If no ticket matches, the command exits with a n
 
 Disciplines describe the kind of work a ticket requires. They are fixed Atoshell options, not project config. Use them to filter `take next` to tickets that match your capabilities, and to tag tickets accurately when creating them via `add`, `edit`, or `add --import`.
 
-| Discipline      | Work it covers                                                                          | Typical agent role                  |
-|-----------------|-----------------------------------------------------------------------------------------|-------------------------------------|
-| `Frontend`      | UI components, client-side logic, styling, browser APIs, user-facing interactions       | Frontend / fullstack agent          |
-| `Backend`       | Server-side logic, REST/GraphQL APIs, services, business rules, data processing         | Backend / fullstack agent           |
-| `Database`      | Schema design, migrations, queries, indexing, data modelling                            | Backend or DBA-specialist agent     |
-| `Cloud`         | Cloud infrastructure, managed services (AWS/GCP/Azure), hosting, networking, scaling    | Infrastructure / cloud agent        |
-| `DevOps`        | CI/CD pipelines, deployment, containerisation, monitoring, operational tooling          | DevOps / platform agent             |
-| `Architecture`  | System design, technical decisions, service boundaries, cross-cutting concerns, ADRs    | Architect or senior agent           |
-| `Automation`    | Scripting, workflow automation, task runners, build tooling (non-test)                  | Tooling / platform agent            |
-| `QA`            | Test writing (unit/integration/e2e), testing strategy, quality gates, bug verification  | QA or general-purpose agent         |
-| `Research`      | Spike work, feasibility studies, technology evaluation, documenting unknowns            | Any agent capable of investigation  |
-| `Core`          | Shared libraries, foundational utilities, cross-service primitives, platform internals  | Backend or platform agent           |
+| Discipline     | Work it covers                                                                         | Typical agent role                 |
+|----------------|----------------------------------------------------------------------------------------|------------------------------------|
+| `Frontend`     | UI components, client-side logic, styling, browser APIs, user-facing interactions      | Frontend / fullstack agent         |
+| `Backend`      | Server-side logic, REST/GraphQL APIs, services, business rules, data processing        | Backend / fullstack agent          |
+| `Database`     | Schema design, migrations, queries, indexing, data modelling                           | Backend or DBA-specialist agent    |
+| `Cloud`        | Cloud infrastructure, managed services (AWS/GCP/Azure), hosting, networking, scaling   | Infrastructure / cloud agent       |
+| `DevOps`       | CI/CD pipelines, deployment, containerisation, monitoring, operational tooling         | DevOps / platform agent            |
+| `Architecture` | System design, technical decisions, service boundaries, cross-cutting concerns, ADRs   | Architect or senior agent          |
+| `Automation`   | Scripting, workflow automation, task runners, build tooling (non-test)                 | Tooling / platform agent           |
+| `QA`           | Test writing (unit/integration/e2e), testing strategy, quality gates, bug verification | QA or general-purpose agent        |
+| `Research`     | Spike work, feasibility studies, technology evaluation, documenting unknowns           | Any agent capable of investigation |
+| `Core`         | Shared libraries, foundational utilities, cross-service primitives, platform internals | Backend or platform agent          |
 
 A ticket may carry multiple disciplines. When tagging, use the narrowest set that accurately reflects the work — don't add disciplines speculatively.
 
@@ -202,31 +202,31 @@ When `--json` is passed and a command fails, the error is written to stderr as a
 
 This lets agents branch on failure type without parsing human-readable strings. Errors always go to stderr; stdout remains empty on failure.
 
-| Code                       | Command                   | Meaning                                                                                |
-|----------------------------|---------------------------|----------------------------------------------------------------------------------------|
-| `NO_READY_TICKETS`         | `show next`, `take next`  | No unblocked ready ticket available                                                    |
-| `TICKET_NOT_FOUND`         | `show`, `take`, `edit`, `comment`, `move`, `delete` | ID not found in any file                                      |
-| `TICKET_CLOSED`            | `take`                    | Ticket is Done — use `--force` to override                                             |
-| `TICKET_ALREADY_ASSIGNED`  | `take`                    | Ticket is assigned to other users; agent is not yet on it — use `--force` to override  |
-| `TICKET_ALSO_ASSIGNED`     | `take`                    | Ticket is assigned to agent and one or more others — use `--force` to suppress         |
-| `COMMENT_NOT_FOUND`        | `comment`                 | Requested comment position does not exist on the ticket                                |
-| `INVALID_TICKET_ID`        | `show`, `take`, `comment`, `move`, `delete` | Argument is not a numeric ID                                           |
-| `FILE_NOT_FOUND`           | `add --import`            | Import file path does not exist                                                        |
-| `INVALID_JSON`             | `add --import`            | Input is not parseable JSON                                                            |
-| `INVALID_FORMAT`           | `add --import`            | Input is valid JSON but not an array                                                   |
-| `VALIDATION_FAILED`        | `add --import`            | One or more items failed pre-write validation; includes `count` and `errors` array     |
-| `UNKNOWN_OPTION`           | JSON-capable commands     | Unsupported CLI option when `--json` / `-j` was requested                              |
-| `UNEXPECTED_ARGUMENT`      | JSON-capable commands     | Extra or unsupported positional argument when `--json` / `-j` was requested            |
-| `MISSING_ARGUMENT`         | JSON-capable commands     | Required argument or flag value is missing when `--json` / `-j` was requested          |
-| `INVALID_TYPE`             | `add`, `edit`, `list`, `take` | Type value or type filter is invalid                                               |
-| `INVALID_PRIORITY`         | `add`, `edit`, `list`, `take` | Priority value or priority filter is invalid                                       |
-| `INVALID_SIZE`             | `add`, `edit`, `list`, `take` | Size value or size filter is invalid                                               |
-| `INVALID_STATUS`           | `add`, `edit`, `list`, `move` | Status value is invalid                                                            |
-| `INVALID_DISCIPLINE`       | `add`, `edit`, `list`, `take` | Discipline value or discipline filter is invalid                                   |
-| `INVALID_DEPENDENCY`       | `add`, `edit`             | Dependency value is not a numeric ticket ID                                            |
-| `DEP_NOT_FOUND`            | `add`, `edit`             | Dependency ticket ID does not exist                                                    |
-| `INVALID_ACTOR`            | `add`, `edit`, `comment`, `move`, `take` | `--as` value is not a positive number or `agent-N`                       |
-| `INVALID_ARGUMENT`         | JSON-capable commands     | Mutually exclusive or unsupported argument combination                                 |
+| Code                      | Command                                             | Meaning                                                                               |
+|---------------------------|-----------------------------------------------------|---------------------------------------------------------------------------------------|
+| `NO_READY_TICKETS`        | `show next`, `take next`                            | No unblocked ready ticket available                                                   |
+| `TICKET_NOT_FOUND`        | `show`, `take`, `edit`, `comment`, `move`, `delete` | ID not found in any file                                                              |
+| `TICKET_CLOSED`           | `take`                                              | Ticket is Done — use `--force` to override                                            |
+| `TICKET_ALREADY_ASSIGNED` | `take`                                              | Ticket is assigned to other users; agent is not yet on it — use `--force` to override |
+| `TICKET_ALSO_ASSIGNED`    | `take`                                              | Ticket is assigned to agent and one or more others — use `--force` to suppress        |
+| `COMMENT_NOT_FOUND`       | `comment`                                           | Requested comment position does not exist on the ticket                               |
+| `INVALID_TICKET_ID`       | `show`, `take`, `comment`, `move`, `delete`         | Argument is not a numeric ID                                                          |
+| `FILE_NOT_FOUND`          | `add --import`                                      | Import file path does not exist                                                       |
+| `INVALID_JSON`            | `add --import`                                      | Input is not parseable JSON                                                           |
+| `INVALID_FORMAT`          | `add --import`                                      | Input is valid JSON but not an array                                                  |
+| `VALIDATION_FAILED`       | `add --import`                                      | One or more items failed pre-write validation; includes `count` and `errors` array    |
+| `UNKNOWN_OPTION`          | JSON-capable commands                               | Unsupported CLI option when `--json` / `-j` was requested                             |
+| `UNEXPECTED_ARGUMENT`     | JSON-capable commands                               | Extra or unsupported positional argument when `--json` / `-j` was requested           |
+| `MISSING_ARGUMENT`        | JSON-capable commands                               | Required argument or flag value is missing when `--json` / `-j` was requested         |
+| `INVALID_TYPE`            | `add`, `edit`, `list`, `take`                       | Type value or type filter is invalid                                                  |
+| `INVALID_PRIORITY`        | `add`, `edit`, `list`, `take`                       | Priority value or priority filter is invalid                                          |
+| `INVALID_SIZE`            | `add`, `edit`, `list`, `take`                       | Size value or size filter is invalid                                                  |
+| `INVALID_STATUS`          | `add`, `edit`, `list`, `move`                       | Status value is invalid                                                               |
+| `INVALID_DISCIPLINE`      | `add`, `edit`, `list`, `take`                       | Discipline value or discipline filter is invalid                                      |
+| `INVALID_DEPENDENCY`      | `add`, `edit`                                       | Dependency value is not a numeric ticket ID                                           |
+| `DEP_NOT_FOUND`           | `add`, `edit`                                       | Dependency ticket ID does not exist                                                   |
+| `INVALID_ACTOR`           | `add`, `edit`, `comment`, `move`, `take`            | `--as` value is not a positive number or `agent-N`                                    |
+| `INVALID_ARGUMENT`        | JSON-capable commands                               | Mutually exclusive or unsupported argument combination                                |
 
 `VALIDATION_FAILED` carries the full error list so the caller can fix and retry:
 
@@ -243,19 +243,19 @@ This lets agents branch on failure type without parsing human-readable strings. 
 
 Nested `VALIDATION_FAILED.errors[].type` values include:
 
-| Code                    | Meaning                                                         |
-|-------------------------|-----------------------------------------------------------------|
-| `MISSING_TITLE`         | Imported item has no title                                      |
-| `INVALID_TYPE`          | Imported item has an invalid type                               |
-| `INVALID_PRIORITY`      | Imported item has an invalid priority                           |
-| `INVALID_SIZE`          | Imported item has an invalid size                               |
-| `INVALID_STATUS`        | Imported item has an invalid status                             |
-| `INVALID_IMPORT_ID`     | Imported item uses a non-numeric batch-local `id`               |
-| `INVALID_DEP_ID`        | Imported item contains a non-numeric dependency                 |
-| `DEP_NOT_FOUND`         | Imported item depends on a missing ticket or batch-local id     |
-| `SELF_DEPENDENCY`       | Imported item depends on itself after batch-local id remapping  |
-| `DUPLICATE_IMPORT_ID`   | Import batch reuses the same batch-local `id` more than once    |
-| `DEP_CYCLE`             | Import batch contains a dependency cycle                        |
+| Code                  | Meaning                                                        |
+|-----------------------|----------------------------------------------------------------|
+| `MISSING_TITLE`       | Imported item has no title                                     |
+| `INVALID_TYPE`        | Imported item has an invalid type                              |
+| `INVALID_PRIORITY`    | Imported item has an invalid priority                          |
+| `INVALID_SIZE`        | Imported item has an invalid size                              |
+| `INVALID_STATUS`      | Imported item has an invalid status                            |
+| `INVALID_IMPORT_ID`   | Imported item uses a non-numeric batch-local `id`              |
+| `INVALID_DEP_ID`      | Imported item contains a non-numeric dependency                |
+| `DEP_NOT_FOUND`       | Imported item depends on a missing ticket or batch-local id    |
+| `SELF_DEPENDENCY`     | Imported item depends on itself after batch-local id remapping |
+| `DUPLICATE_IMPORT_ID` | Import batch reuses the same batch-local `id` more than once   |
+| `DEP_CYCLE`           | Import batch contains a dependency cycle                       |
 
 ---
 
@@ -289,9 +289,9 @@ human-only.
 ## Moving tickets
 
 ```bash
-atoshell move <id> done         # complete
-atoshell move <id> in progress  # reopen
-atoshell move <id> 1            # column number: 1=Backlog 2=Ready 3=In Progress 4=Done
+atoshell move <id> done               # complete
+atoshell move <id> in progress        # reopen
+atoshell move <id> 1                  # column number: 1=Backlog 2=Ready 3=In Progress 4=Done
 atoshell move <id[,id]> done --json  # returns a JSON array of moved tickets
 ```
 
@@ -381,9 +381,9 @@ For non-code dependencies (research, design decisions) the same rule applies —
 
 Local verification must stay proportional to the change:
 
-- Run static checks plus the smallest test file or exact `--filter` that directly covers the behavior changed.
-- Do not run unrelated test files or the full local suite by default. GitHub Actions owns full-suite coverage.
-- Broaden local coverage only when a focused failure indicates wider impact, shared test infrastructure changed, or a release check was explicitly requested.
+- Start with static checks plus the smallest test file or exact `--filter` that directly covers the behavior changed.
+- Broaden local coverage when shared production code changed, the blast radius crosses commands, focused evidence exposes wider impact, test infrastructure changed, or a release check was explicitly requested.
+- Do not run unrelated test files or the full local suite by default. GitHub Actions provides additional full-suite coverage; it does not replace proportionate local verification.
 - Never ignore a focused failure. Fix it and rerun the same focused check before committing.
 
 On Windows, run Bats suites from the repo root with `bats.cmd` so the Bash-based test harness goes through the local Git Bash / MSYS install instead of relying on shell discovery.
@@ -413,13 +413,13 @@ For focused CLI checks, prefer explicit Git Bash commands against the shipped en
 
 ## Edge cases
 
-| Situation                           | Behaviour                                                                                                                        |
-|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| No ready tickets                    | `take next` / `show next` exit 1 with error on stderr — stop gracefully                                                          |
-| Ticket already Done                 | `take <id> --force` to override — also suppresses all warnings; cannot be used with `next`                                       |
-| Ticket has unresolved dependencies  | Its blockers can be pulled forward by cleanup budget; otherwise `show next` / `take next` skip that chain — check `list blockers` |
-| Ticket already assigned to others   | `take` exits 1 with `TICKET_ALREADY_ASSIGNED` (or `TICKET_ALSO_ASSIGNED` if agent is already on it) — use `--force` to override  |
-| Ticket already In Progress          | `take` warns but still moves to In Progress — use `--force` to suppress the warning                                              |
+| Situation                          | Behaviour                                                                                                                         |
+|------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| No ready tickets                   | `take next` / `show next` exit 1 with error on stderr — stop gracefully                                                           |
+| Ticket already Done                | `take <id> --force` to override — also suppresses all warnings; cannot be used with `next`                                        |
+| Ticket has unresolved dependencies | Its blockers can be pulled forward by cleanup budget; otherwise `show next` / `take next` skip that chain — check `list blockers` |
+| Ticket already assigned to others  | `take` exits 1 with `TICKET_ALREADY_ASSIGNED` (or `TICKET_ALSO_ASSIGNED` if agent is already on it) — use `--force` to override   |
+| Ticket already In Progress         | `take` warns but still moves to In Progress — use `--force` to suppress the warning                                               |
 
 ---
 

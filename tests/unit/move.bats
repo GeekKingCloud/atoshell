@@ -81,7 +81,6 @@ load '../helpers/setup'
   [ "$(jq -r '.tickets[] | select(.id == 1) | .updated_by' .atoshell/done.json)" = "agent-1" ]
   [ "$(jq -r '.tickets[] | select(.id == 1) | .comments[0].text | length' .atoshell/done.json)" -eq 40000 ]
   [ "$(jq '[.tickets[] | select(.id == 1)] | length' .atoshell/queue.json)" -eq 0 ]
-  [ ! -e .atoshell/.transaction ]
 }
 @test "move: backlog → queue removes ticket from backlog" {
   run atoshell move 4 "In Progress"

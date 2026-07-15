@@ -84,16 +84,24 @@ _move_ticket_json() {
   local ticket_file
 
   ticket_file="$(_mktemp_sibling "$dest_file")"
-  trap '_state_tmp_cleanup "$ticket_file"' RETURN
   printf '%s\n' "$ticket" > "$ticket_file"
 
-  jq -e . "$ticket_file" >/dev/null || return 1
-  jq_inplace "$dest_file" --slurpfile t "$ticket_file" '.tickets += [$t[0]]'
-  jq_inplace "$src_file" --arg id "$id" \
-    'del(.tickets[] | select(.id | tostring == $id))'
+  if ! jq -e 'type == "object"' "$ticket_file" >/dev/null 2>&1; then
+    rm -f "$ticket_file"
+    return 1
+  fi
+
+  if ! jq_inplace "$dest_file" --slurpfile t "$ticket_file" '.tickets += [$t[0]]'; then
+    rm -f "$ticket_file"
+    return 1
+  fi
+  if ! jq_inplace "$src_file" --arg id "$id" \
+    'del(.tickets[] | select(.id | tostring == $id))'; then
+    rm -f "$ticket_file"
+    return 1
+  fi
 
   rm -f "$ticket_file"
-  trap - RETURN
 }
 
 # ── ID and UUID helpers ──────────────────────────────────────────────────────
