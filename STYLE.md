@@ -98,10 +98,10 @@ printf ' 11) uninstall  — Remove atoshell\n'
 Example — multi-column alias list:
 
 ```text
-#   install                                        — Install atoshell on this machine
-#   uninstall  | nuku   | purge                    — Remove atoshell
-#   take       | toru    | snatch  | grab          — Assign yourself to a ticket and move it to In Progress
-#   add        | tasu    | fab     | new   | open  — Create a new ticket
+#   install                                           — Install atoshell on this machine
+#   uninstall  | nuku       | purge                   — Remove atoshell
+#   take       | toru       | snatch  | grab          — Assign yourself to a ticket and move it to In Progress
+#   add        | tasu       | fab     | new   | open  — Create a new ticket
 ```
 
 Example — aligned `case` block:
