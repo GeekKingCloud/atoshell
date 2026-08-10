@@ -1,3 +1,9 @@
+# Atoshell Style Guide
+
+This file preserves the project style guide that previously lived in the root STYLE.md. The root STYLE.md has been retired; agents and contributors should load this file through AGENTS.md or docs/operandi/README.md.
+
+---
+
 # atoshell Development Style Guide
 
 This guide is for contributors working on atoshell itself. `README.md` is the user contract; `AGENTS.md` is the agent-facing contract.
@@ -38,10 +44,11 @@ Every command script should:
 2. Source `funcs/helpers.sh`.
 3. Source other shared modules only when needed.
 4. Call `_setup` before writing project state, or `_setup_readonly` for read-only commands. Read-only setup must stay lock-free on the normal path, but must recover any visible lock or transaction journal before reading.
-5. Use banner comments for major sections.
-6. Keep the file header in this order: title line, `Usage:`, optional `Aliases:`, then examples/options blocks when needed.
-7. Keep command files in narrative order: setup, initial parsed-state variables, flag parsing, validation/pre-flight checks, helper functions local to the command, the main read/write operation, then JSON/human output.
-8. Keep dispatchers in narrative order: setup, helper functions, global-flag stripping, command normalization, help/version/menu branches, then final `exec` dispatch.
+5. Pass large ticket or queue payloads to `jq` through files such as `--slurpfile`; never place complete ticket objects or unbounded comment history in process arguments.
+6. Use banner comments for major sections.
+7. Keep the file header in this order: title line, `Usage:`, optional `Aliases:`, then examples/options blocks when needed.
+8. Keep command files in narrative order: setup, initial parsed-state variables, flag parsing, validation/pre-flight checks, helper functions local to the command, the main read/write operation, then JSON/human output.
+9. Keep dispatchers in narrative order: setup, helper functions, global-flag stripping, command normalization, help/version/menu branches, then final `exec` dispatch.
 
 ### Layout and alignment
 
@@ -97,10 +104,10 @@ printf ' 11) uninstall  — Remove atoshell\n'
 Example — multi-column alias list:
 
 ```text
-#   install                                        — Install atoshell on this machine
-#   uninstall  | nuku   | purge                    — Remove atoshell
-#   take       | toru    | snatch  | grab          — Assign yourself to a ticket and move it to In Progress
-#   add        | tasu    | fab     | new   | open  — Create a new ticket
+#   install                                           — Install atoshell on this machine
+#   uninstall  | nuku       | purge                   — Remove atoshell
+#   take       | toru       | snatch  | grab          — Assign yourself to a ticket and move it to In Progress
+#   add        | tasu       | fab     | new   | open  — Create a new ticket
 ```
 
 Example — aligned `case` block:
@@ -208,3 +215,4 @@ done
 - Optimize for clarity first, then measure.
 - Ranking and filtering code should stay linear or close to linear in ticket count.
 - When adding jq-heavy logic, prefer a single pass with explicit sort/rank helpers over repeated shell subprocess chains.
+

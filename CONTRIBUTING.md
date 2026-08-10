@@ -26,7 +26,7 @@ install modern Bash with Homebrew and ensure it appears before `/bin` in `PATH`.
 Read:
 
 - `README.md` for the user-facing contract
-- `STYLE.md` for coding and formatting conventions
+- `docs/operandi/style.md` for coding and formatting conventions
 - `AGENTS.md` for automation, JSON, and orchestration behavior
 - `tests/README.md` for test structure
 
@@ -38,7 +38,7 @@ Treat these files as part of the same public surface when changing CLI behavior:
 - `VERSION`
 - `README.md`
 - `AGENTS.md`
-- `STYLE.md`
+- `docs/operandi/style.md`
 - `tests/README.md`
 
 ## Coding Standards
@@ -81,7 +81,7 @@ Update docs in the same change when behavior changes.
 
 - User-facing CLI behavior belongs in `README.md`
 - Agent/automation behavior belongs in `AGENTS.md`
-- Contributor conventions belong in `STYLE.md`
+- Contributor conventions belong in `docs/operandi/style.md`
 - Test layout and verification notes belong in `tests/README.md`
 - Release-visible behavior belongs in `CHANGELOG.md`
 

@@ -33,8 +33,30 @@ load '../helpers/setup'
 @test "atoshell help and menu keep alias-column alignment" {
   run atoshell help
   [ "$status" -eq 0 ]
+  [[ "$output" == *"  add        | tasu       | fab     | new   | open  — Create a new ticket"* ]]
   [[ "$output" == *"  version    | --version  | -v                      — Print the atoshell version"* ]]
   [[ "$output" == *"  install                                           — Install atoshell on this machine"* ]]
+}
+@test "atoshell menu and README use the complete measured menu grid" {
+  local source_line rendered before i
+  local -a runtime_rows=() readme_rows=()
+
+  while IFS= read -r source_line; do
+    rendered="${source_line#*printf \'}"
+    rendered="${rendered%\\n\'}"
+    runtime_rows+=("$rendered")
+  done < <(grep -E "^[[:space:]]+printf '  [0-9]+\\) " "$ATOSHELL_REPO/atoshell.sh")
+  while IFS= read -r rendered; do
+    readme_rows+=("$rendered")
+  done < <(grep -E '^  [0-9]+\) ' "$ATOSHELL_REPO/README.md")
+
+  [ "${#runtime_rows[@]}" -eq 14 ]
+  [ "${#readme_rows[@]}" -eq 14 ]
+  for (( i=0; i<${#runtime_rows[@]}; i++ )); do
+    before="${runtime_rows[$i]%%—*}"
+    [ "${#before}" -eq 17 ]
+    [ "${runtime_rows[$i]}" = "${readme_rows[$i]}" ]
+  done
 }
 @test "atoshell --help: exit code 0" {
   run atoshell --help

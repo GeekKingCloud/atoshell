@@ -44,6 +44,31 @@ _cat_only_path() {
   diff -u "$example_keys" "$generated_keys"
 }
 
+@test "_config_template: aligns status comments two spaces after the widest assignment" {
+  local generated="$BATS_TEST_TMPDIR/aligned-config.env"
+  local line assignment prefix current_column row_count=0 widest=0
+  local -a comment_columns=()
+  _config_template > "$generated"
+
+  while IFS= read -r line; do
+    [[ "$line" == STATUS_*=* ]] || continue
+    row_count=$(( row_count + 1 ))
+    [[ "$line" == *'#'* ]]
+    prefix="${line%%#*}"
+    current_column="${#prefix}"
+    assignment="$prefix"
+    while [[ "$assignment" == *' ' ]]; do assignment="${assignment% }"; done
+    (( ${#assignment} > widest )) && widest="${#assignment}"
+    comment_columns+=("$current_column")
+  done < "$generated"
+
+  [ "$row_count" -eq 4 ]
+  local column
+  for column in "${comment_columns[@]}"; do
+    [ "$column" -eq $(( widest + 2 )) ]
+  done
+}
+
 @test "_sync_config_vars: rewrites sparse config through the canonical template" {
   printf '%s\n' \
     'STATUS_BACKLOG="Backlog"' \

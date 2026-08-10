@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# move.sh — Move ticket(s) to a new status (workflow transition)
+# move.sh — Move ticket(s) to a new status (by name or column 1-4)
 #
 # Usage:
 #   atoshell move <id[,id,...]> <status|column_number>

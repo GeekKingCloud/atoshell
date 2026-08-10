@@ -343,46 +343,6 @@ _timestamp() {
 }
 
 # ── Config file sync ─────────────────────────────────────────────────────────
-_config_file_has_key() {
-  local file="$1"
-  local key="$2"
-  local line=""
-
-  [[ -f "$file" ]] || return 1
-
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ "$line" =~ ^[#[:space:]]*${key}[[:space:]]*= ]] && return 0
-  done < "$file"
-
-  return 1
-}
-
-_remove_config_key() {
-  local file="$1"
-  local key="$2"
-  local tmp removed=0 line
-
-  [[ -f "$file" ]] || return 1
-  tmp="${file}.tmp.$$"
-
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ "$line" =~ ^[#[:space:]]*${key}[[:space:]]*= ]]; then
-      removed=1
-      continue
-    fi
-    printf '%s\n' "$line"
-  done < "$file" > "$tmp"
-
-  if [[ "$removed" -eq 1 ]]; then
-    mv "$tmp" "$file"
-    _outf '  [REMOVED]  .atoshell/config.env: %s\n' "$key"
-    return 0
-  fi
-
-  rm -f "$tmp"
-  return 1
-}
-
 # Idempotent config file setup — mirrors _ensure_files for config.env.
 # Creates the file from a packaged template or generated fallback if missing/empty,
 # then rewrites existing files through the canonical template while preserving
