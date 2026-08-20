@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.3.1]
+
+### Fixed
+
+- Preserved complex ticket descriptions containing quotes and multiline text when moving tickets between state files.
+- Kept cross-file move payloads file-backed through staging and cleanup so JSON escaping remains intact.
+
+### Tests
+
+- Added regression coverage for complex description preservation and temporary move-payload cleanup.
+
 ## [2.3.0]
 
 ### Changed

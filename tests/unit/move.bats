@@ -82,6 +82,24 @@ load '../helpers/setup'
   [ "$(jq -r '.tickets[] | select(.id == 1) | .comments[0].text | length' .atoshell/done.json)" -eq 40000 ]
   [ "$(jq '[.tickets[] | select(.id == 1)] | length' .atoshell/queue.json)" -eq 0 ]
 }
+@test "move: cross-file move preserves a quoted multiline description" {
+  expected=$'Goal:\n- verify status "done"\n- keep `/work/state.json` authoritative'
+  jq --arg description "$expected" \
+    '(.tickets[] | select(.id == 1).description) = $description' \
+    .atoshell/queue.json > .atoshell/queue.complex.json
+  mv .atoshell/queue.complex.json .atoshell/queue.json
+
+  run atoshell move 1 "Done" --json
+
+  [ "$status" -eq 0 ]
+  actual=$(jq -r '.tickets[] | select(.id == 1) | .description' .atoshell/done.json)
+  [ "$actual" = "$expected" ]
+  [ ! -e .atoshell/.lock ]
+  [ ! -e .atoshell/.transaction ]
+  shopt -s nullglob
+  tmp_files=(.atoshell/.queue.json.tmp.*)
+  [ "${#tmp_files[@]}" -eq 0 ]
+}
 @test "move: backlog → queue removes ticket from backlog" {
   run atoshell move 4 "In Progress"
   [ "$status" -eq 0 ]

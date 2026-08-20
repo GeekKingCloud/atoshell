@@ -21,10 +21,10 @@ Use the Atoshell-style release body:
 
 1. A short opening sentence naming what the version delivers.
 2. ## Highlights with concise bullets for the major user-facing changes.
-3. ## Install with npm/Bun commands and archive links when applicable.
+3. ## Install with npm/Bun commands and any project-built artifact instructions that are actually needed. Do not add source-archive links merely because GitHub supplies them automatically.
 4. ## Verification with the exact local tests, packaging checks, and publish evidence inspected.
 
-Attach or reference the packaged repository archives GitHub creates for the tag. When adding project-built bundles or zips later, name them with the version and keep the contents aligned with the npm package surface.
+GitHub automatically adds `Source code (zip)` and `Source code (tar.gz)` entries to every tagged release. Leave those built-in entries alone: do not upload duplicate source archives, treat them as custom release assets, or add a separate source-archives section to the release notes. Only attach or reference project-built bundles or zips when the release actually produces them; name those artifacts with the version and keep their contents aligned with the npm package surface.
 
 ## npm Publishing
 
