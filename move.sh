@@ -78,7 +78,6 @@ fi
 
 IFS=',' read -ra ids <<< "$ids_raw"
 declare -a move_messages=()
-declare -a moved_tickets=()
 seen_ids=","
 
 for ticket_id in "${ids[@]}"; do
@@ -105,30 +104,32 @@ for ticket_id in "${ids[@]}"; do
 done
 
 _state_transaction_begin
+moved_tickets_file="$(_mktemp_sibling "$QUEUE_FILE")"
+ticket_file=""
+: > "$moved_tickets_file"
+trap 'rm -f "$moved_tickets_file" "${ticket_file:-}"; _state_lock_release' EXIT
 for ticket_id in "${ids[@]}"; do
   ticket_id="${ticket_id// /}"
 
-  move_lookup=$(jq -n -r \
-    --arg id "$ticket_id" --arg s "$status_val" --arg by "$actor" --arg ts "$ts" \
+  src_key=$(jq -n -r \
+    --arg id "$ticket_id" \
     --slurpfile queue "$(_state_transaction_current_file "$QUEUE_FILE")" \
     --slurpfile backlog "$(_state_transaction_current_file "$BACKLOG_FILE")" \
     --slurpfile done "$(_state_transaction_current_file "$DONE_FILE")" '
     def hit($source; $data):
       $data[0].tickets[]? |
       select(.id | tostring == $id) |
-      [$source, (. + {status: $s, updated_by: $by, updated_at: $ts} | tojson)] |
-      @tsv;
+      $source;
     first(
       hit("queue"; $queue),
       hit("backlog"; $backlog),
       hit("done"; $done)
     ) // empty')
 
-  if [[ -z "$move_lookup" ]]; then
+  if [[ -z "$src_key" ]]; then
     _cli_error "$json" "TICKET_NOT_FOUND" "ticket #$ticket_id not found." "id" "$ticket_id"
   fi
 
-  IFS=$'\t' read -r src_key ticket <<< "$move_lookup"
   case "$src_key" in
     queue)    src_file="$QUEUE_FILE" ;;
     backlog)  src_file="$BACKLOG_FILE" ;;
@@ -136,20 +137,31 @@ for ticket_id in "${ids[@]}"; do
     *)
       _cli_error "$json" "TICKET_NOT_FOUND" "ticket #$ticket_id not found." "id" "$ticket_id" ;;
   esac
+
+  ticket_file="$(_mktemp_sibling "$src_file")"
+  jq --arg id "$ticket_id" --arg s "$status_val" --arg by "$actor" --arg ts "$ts" '
+    .tickets[] |
+    select(.id | tostring == $id) |
+    . + {status: $s, updated_by: $by, updated_at: $ts}
+  ' "$(_state_transaction_current_file "$src_file")" > "$ticket_file"
+  jq -e 'type == "object"' "$ticket_file" >/dev/null
+
   if [[ "$ATOSHELL_QUIET" != "1" && "$json" != true ]]; then
-    title=$(_jq_text '.title' <<< "$ticket")
+    title=$(_jq_text '.title' < "$ticket_file")
     title_display="$(_terminal_safe_line "$title")"
   fi
 
   if [[ "$src_file" != "$dest_file" ]]; then
-    _move_ticket_json "$src_file" "$dest_file" "$ticket_id" "$ticket"
+    _move_ticket_file "$src_file" "$dest_file" "$ticket_id" "$ticket_file"
   else
     jq_inplace "$src_file" --arg id "$ticket_id" --arg s "$status_val" \
       --arg by "$actor" --arg ts "$ts" \
       '(.tickets[] | select(.id | tostring == $id)) |=
         . + {status: $s, updated_by: $by, updated_at: $ts}'
   fi
-  moved_tickets+=("$ticket")
+  jq -c . "$ticket_file" >> "$moved_tickets_file"
+  rm -f "$ticket_file"
+  ticket_file=""
 
   if [[ "$ATOSHELL_QUIET" != "1" && "$json" != true ]]; then
     status_display="$(_terminal_safe_line "$status_val")"
@@ -159,7 +171,7 @@ done
 _state_transaction_commit
 
 if $json; then
-  printf '%s\n' "${moved_tickets[@]}" | jq -s '.'
+  jq -s '.' "$moved_tickets_file"
   exit 0
 fi
 

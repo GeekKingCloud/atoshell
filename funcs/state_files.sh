@@ -76,32 +76,38 @@ _find_ticket_file() {
   exit 2
 }
 
+_move_ticket_file() {
+  local src_file="$1"
+  local dest_file="$2"
+  local id="$3"
+  local ticket_file="$4"
+
+  if ! jq -e 'type == "object"' "$ticket_file" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! jq_inplace "$dest_file" --slurpfile t "$ticket_file" '.tickets += [$t[0]]'; then
+    return 1
+  fi
+  if ! jq_inplace "$src_file" --arg id "$id" \
+    'del(.tickets[] | select(.id | tostring == $id))'; then
+    return 1
+  fi
+}
+
 _move_ticket_json() {
   local src_file="$1"
   local dest_file="$2"
   local id="$3"
   local ticket="$4"
-  local ticket_file
+  local ticket_file status=0
 
   ticket_file="$(_mktemp_sibling "$dest_file")"
   printf '%s\n' "$ticket" > "$ticket_file"
 
-  if ! jq -e 'type == "object"' "$ticket_file" >/dev/null 2>&1; then
-    rm -f "$ticket_file"
-    return 1
-  fi
-
-  if ! jq_inplace "$dest_file" --slurpfile t "$ticket_file" '.tickets += [$t[0]]'; then
-    rm -f "$ticket_file"
-    return 1
-  fi
-  if ! jq_inplace "$src_file" --arg id "$id" \
-    'del(.tickets[] | select(.id | tostring == $id))'; then
-    rm -f "$ticket_file"
-    return 1
-  fi
-
+  _move_ticket_file "$src_file" "$dest_file" "$id" "$ticket_file" || status=$?
   rm -f "$ticket_file"
+  return "$status"
 }
 
 # ── ID and UUID helpers ──────────────────────────────────────────────────────
